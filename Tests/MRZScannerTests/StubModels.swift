@@ -6,6 +6,7 @@
 //
 
 @testable import MRZScanner
+import MRZParser
 import CoreImage
 
 struct StubModels {
@@ -17,9 +18,10 @@ struct StubModels {
         return formatter
     }()
 
-    static let firstParsedResult = ParsedResult(
+    static let firstParsedResult = MRZResult(
         format: .td3,
         documentType: .passport,
+        documentTypeAdditional: nil,
         countryCode: "UTO",
         surnames: "ERIKSSON",
         givenNames: "ANNA MARIA",
@@ -32,9 +34,10 @@ struct StubModels {
         optionalData2: nil
     )
 
-    static let secondParsedResult = ParsedResult(
+    static let secondParsedResult = MRZResult(
         format: .td2,
         documentType: .id,
+        documentTypeAdditional: "A",
         countryCode: "",
         surnames: "",
         givenNames: "",
@@ -46,13 +49,4 @@ struct StubModels {
         optionalData: nil,
         optionalData2: nil
     )
-
-    static let textRecognizerResults: [TextRecognizerResult] = [.init(results: [], boundingRect: .zero)]
-    static let validatedResults: [ValidatedResult] = [.init(result: "", index: 0)]
-
-    static var sampleBufferStub: CVPixelBuffer {
-        var pixelBuffer : CVPixelBuffer? = nil
-        CVPixelBufferCreate(kCFAllocatorDefault, 100, 100, kCVPixelFormatType_32BGRA, nil, &pixelBuffer)
-        return pixelBuffer!
-    }
 }

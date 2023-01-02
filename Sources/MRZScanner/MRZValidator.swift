@@ -7,9 +7,16 @@
 
 import MRZParser
 
-struct MRZValidator: Validator {
-    func getValidatedResults(from possibleLines: [[String]]) -> ValidatedResults {
-        var validLines = ValidatedResults()
+struct MRZValidator {
+    struct Result {
+        /// MRZLine
+        let result: String
+        /// MRZLine boundingRect index
+        let index: Int
+    }
+
+    static func getValidatedResults(from possibleLines: [[String]]) -> [Result] {
+        var validLines: [Result] = []
 
         for validMRZCode in MRZFormat.allCases {
             guard validLines.count < validMRZCode.linesCount else { break }
@@ -28,4 +35,6 @@ struct MRZValidator: Validator {
         }
         return validLines
     }
+
+    private init() {}
 }

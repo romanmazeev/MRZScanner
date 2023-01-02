@@ -9,14 +9,6 @@ import XCTest
 @testable import MRZScanner
 
 final class MRZValidatorTests: XCTestCase {
-    private var validator: Validator!
-
-    override func setUp() {
-        super.setUp()
-
-        validator = MRZValidator()
-    }
-
     func testTD1CleanValidation() {
         let valueToValidate = [
             ["I<UTOD231458907<<<<<<<<<<<<<<<"],
@@ -24,13 +16,13 @@ final class MRZValidatorTests: XCTestCase {
             ["ERIKSSON<<ANNA<MARIA<<<<<<<<<<"]
         ]
 
-        let validatedResults: ValidatedResults = [
+        let validatedResults: [MRZValidator.Result] = [
             .init(result: "I<UTOD231458907<<<<<<<<<<<<<<<", index: 0),
             .init(result: "7408122F1204159UTO<<<<<<<<<<<6", index: 1),
             .init(result: "ERIKSSON<<ANNA<MARIA<<<<<<<<<<", index: 2),
         ]
 
-        let expectedValidatedResult = validator.getValidatedResults(from: valueToValidate)
+        let expectedValidatedResult = MRZValidator.getValidatedResults(from: valueToValidate)
         XCTAssertEqual(expectedValidatedResult, validatedResults)
     }
 
@@ -40,19 +32,19 @@ final class MRZValidatorTests: XCTestCase {
             ["D231458907UTO7408122F1204159<<<<<<<6"]
         ]
 
-        let validatedResults: ValidatedResults = [
+        let validatedResults: [MRZValidator.Result] = [
             .init(result: "I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<", index: 0),
             .init(result: "D231458907UTO7408122F1204159<<<<<<<6", index: 1),
         ]
 
-        let expectedValidatedResult = validator.getValidatedResults(from: valueToValidate)
+        let expectedValidatedResult = MRZValidator.getValidatedResults(from: valueToValidate)
         XCTAssertEqual(expectedValidatedResult, validatedResults)
     }
 
     func testEmptyValidation() {
-        let validatedResults: ValidatedResults = []
+        let validatedResults: [MRZValidator.Result] = []
 
-        let expectedValidatedResult = validator.getValidatedResults(from: [])
+        let expectedValidatedResult = MRZValidator.getValidatedResults(from: [])
         XCTAssertEqual(expectedValidatedResult, validatedResults)
     }
 
@@ -62,12 +54,12 @@ final class MRZValidatorTests: XCTestCase {
             ["L898902C36UTO7408122F1204159ZE184226B<<<<<10"]
         ]
 
-        let validatedResults: ValidatedResults = [
+        let validatedResults: [MRZValidator.Result] = [
             .init(result: "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<", index: 0),
             .init(result: "L898902C36UTO7408122F1204159ZE184226B<<<<<10", index: 1),
         ]
 
-        let expectedValidatedResult = validator.getValidatedResults(from: valueToValidate)
+        let expectedValidatedResult = MRZValidator.getValidatedResults(from: valueToValidate)
         XCTAssertEqual(expectedValidatedResult, validatedResults)
     }
 
@@ -93,10 +85,10 @@ final class MRZValidatorTests: XCTestCase {
             ]
         ]
 
-        let validatedResults: ValidatedResults = [
+        let validatedResults: [MRZValidator.Result] = [
         ]
 
-        let expectedValidatedResults = validator.getValidatedResults(from: valueToValidate)
+        let expectedValidatedResults = MRZValidator.getValidatedResults(from: valueToValidate)
         XCTAssertEqual(expectedValidatedResults, validatedResults)
     }
 
@@ -116,12 +108,12 @@ final class MRZValidatorTests: XCTestCase {
             ]
         ]
 
-        let validatedResults: ValidatedResults = [
+        let validatedResults: [MRZValidator.Result] = [
             .init(result: "V<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<", index: 0),
             .init(result: "L8988901C4XXX4009078F96121096ZE184226B<<<<<<", index: 1),
         ]
 
-        let expectedValidatedResults = validator.getValidatedResults(from: valueToValidate)
+        let expectedValidatedResults = MRZValidator.getValidatedResults(from: valueToValidate)
         XCTAssertEqual(expectedValidatedResults, validatedResults)
     }
 
@@ -159,18 +151,18 @@ final class MRZValidatorTests: XCTestCase {
             ],
         ]
 
-        let validatedResults: ValidatedResults = [
+        let validatedResults: [MRZValidator.Result] = [
             .init(result: "V<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<", index: 1),
             .init(result: "L8988901C4XXX4009078F9612109<<<<<<<<", index: 3),
         ]
 
-        let expectedValidatedResults = validator.getValidatedResults(from: valueToValidate)
+        let expectedValidatedResults = MRZValidator.getValidatedResults(from: valueToValidate)
         XCTAssertEqual(expectedValidatedResults, validatedResults)
     }
 }
 
-extension ValidatedResult: Equatable {
-    public static func == (lhs: ValidatedResult, rhs: ValidatedResult) -> Bool {
+extension MRZValidator.Result: Equatable {
+    public static func == (lhs: MRZValidator.Result, rhs: MRZValidator.Result) -> Bool {
         lhs.result == rhs.result && lhs.index == rhs.index
     }
 }

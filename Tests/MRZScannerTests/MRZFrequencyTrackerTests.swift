@@ -1,5 +1,5 @@
 //
-//  FrequencyTrackerTests.swift
+//  MRZFrequencyTrackerTests.swift
 //  
 //
 //  Created by Roman Mazeev on 13.07.2021.
@@ -8,14 +8,14 @@
 import XCTest
 @testable import MRZScanner
 
-final class FrequencyTrackerTests: XCTestCase {
-    private var tracker: Tracker!
+final class MRZFrequencyTrackerTests: XCTestCase {
+    private var tracker: MRZFrequencyTracker!
     private let frequency = 8
 
     override func setUp() {
         super.setUp()
 
-        tracker = FrequencyTracker(frequency: frequency)
+        tracker = MRZFrequencyTracker(frequency: frequency)
     }
 
     func testOneResultFrequencyTimes() {
