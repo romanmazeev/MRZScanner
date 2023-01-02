@@ -1,16 +1,14 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "MRZParser",
-        "repositoryURL": "https://github.com/appintheair/MRZParser.git",
-        "state": {
-          "branch": null,
-          "revision": "98ef7d43a98991b0296e993f76562ebd29038595",
-          "version": "1.1.2"
-        }
+  "pins" : [
+    {
+      "identity" : "mrzparser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/appintheair/MRZParser.git",
+      "state" : {
+        "revision" : "64b73fae8092b31d0a378f0d000c244470c7ac44",
+        "version" : "1.1.3"
       }
-    ]
-  },
-  "version": 1
+    }
+  ],
+  "version" : 2
 }
