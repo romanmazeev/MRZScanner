@@ -13,7 +13,7 @@ Library for scanning documents via [MRZ](https://en.wikipedia.org/wiki/Machine-r
 ### Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/romanmazeev/MRZScanner.git", .upToNextMajor(from: "1.0.0"))
+    .package(url: "https://github.com/romanmazeev/MRZScanner.git", .upToNextMajor(from: "1.1.0"))
 ]
 ```
 *The library has an SPM [dependency](https://github.com/romanmazeev/MRZParser) for MRZ code parsing.*
@@ -28,17 +28,12 @@ ScanningConfiguration(orientation: .up, regionOfInterest: roi, minimumTextHeight
 2. After you need to start scanning
 ```swift
 /// Live scanning
-for try await scanningResult in MRZScanner.scanLive(imageStream: imageStream, configuration: configuration) {
+for try await scanningResult in imageStream.scanForMRZCode(configuration: configuration) {
     // Handle `scanningResult` here
 }
 
 /// Single scanning
-let scanningResult = try await MRZScanner.scanSingle(image: image, configuration: configuration)
-```
-
-*Also, for the convenience of transforming coordinates into a normalized form and back, there is a static method `convertRect`*
-```swift
-MRZScanner.convertRect(to: .normalizedRect, rect: rect, imageWidth: imageWidth, imageHeight: imageHeight)
+let scanningResult = try await image.scanForMRZCode(configuration: configuration)
 ```
 
 ## Example
