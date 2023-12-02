@@ -5,8 +5,8 @@
 //  Created by Roman Mazeev on 01/01/2023.
 //
 
+import MRZScanner
 import SwiftUI
-import MRZParser
 
 struct ContentView: View {
     private let dateFormatter: DateFormatter = {
@@ -17,11 +17,13 @@ struct ContentView: View {
     }()
 
     @StateObject private var viewModel = ViewModel()
+    @State private var cameraRect: CGRect?
+    @State private var mrzRect: CGRect?
 
     var body: some View {
         GeometryReader { proxy in
             Group {
-                if let cameraRect = viewModel.cameraRect {
+                if let cameraRect {
                     CameraView(captureSession: viewModel.captureSession)
                         .frame(width: cameraRect.width, height: cameraRect.height)
                 }
@@ -29,22 +31,19 @@ struct ContentView: View {
                 ZStack {
                     Color.black.opacity(0.5)
 
-                    if let mrzRect = viewModel.mrzRect {
+                    if let mrzRect {
                         Rectangle()
                             .blendMode(.destinationOut)
                             .frame(width: mrzRect.size.width, height: mrzRect.size.height)
                             .position(mrzRect.origin)
                             .task {
-                                do {
-                                    try await viewModel.startMRZScanning()
-                                } catch {
-                                    print(error.localizedDescription)
-                                }
+                                guard let cameraRect else { return }
+
+                                await viewModel.startMRZScanning(cameraRect: cameraRect, mrzRect: mrzRect)
                             }
                     }
                 }
                 .compositingGroup()
-
 
                 if let boundingRects = viewModel.boundingRects {
                     ForEach(boundingRects.valid, id: \.self) { boundingRect in
@@ -57,9 +56,9 @@ struct ContentView: View {
                 }
             }
             .onAppear {
-                viewModel.cameraRect = proxy.frame(in: .global)
-                viewModel.mrzRect = .init(origin: .init(x: proxy.size.width / 2, y: proxy.size.height / 2),
-                                          size: .init(width: proxy.size.width - 40, height: proxy.size.width / 5))
+                cameraRect = proxy.frame(in: .global)
+                mrzRect = .init(origin: .init(x: proxy.size.width / 2, y: proxy.size.height / 2),
+                                size: .init(width: proxy.size.width - 40, height: proxy.size.width / 5))
             }
         }
         .alert(isPresented: .init(get: { viewModel.mrzResult != nil }, set: { _ in viewModel.mrzResult = nil })) {
@@ -68,13 +67,15 @@ struct ContentView: View {
                 message: Text(createAlertMessage(mrzResult: viewModel.mrzResult!)),
                 dismissButton: .default(Text("Got it!")) {
                     Task {
-                        try await viewModel.startMRZScanning()
+                        guard let cameraRect, let mrzRect else { return }
+
+                        await viewModel.startMRZScanning(cameraRect: cameraRect, mrzRect: mrzRect)
                     }
                 }
             )
         }
         .task {
-            viewModel.startCamera()
+            await viewModel.startCamera()
         }
         .statusBarHidden()
         .ignoresSafeArea()
@@ -87,7 +88,7 @@ struct ContentView: View {
             .position(rect.origin)
     }
 
-    private func createAlertMessage(mrzResult: MRZResult) -> String {
+    private func createAlertMessage(mrzResult: ParserResult) -> String {
         var birthdateString: String?
         var expiryDateString: String?
 

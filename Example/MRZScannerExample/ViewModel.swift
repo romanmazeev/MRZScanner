@@ -8,54 +8,48 @@
 import AVFoundation
 import SwiftUI
 import MRZScanner
-import MRZParser
 import Vision
 
+@MainActor
 final class ViewModel: ObservableObject {
 
     // MARK: Camera
     private let camera = Camera()
-    @Published var cameraRect: CGRect?
     var captureSession: AVCaptureSession {
         camera.captureSession
     }
 
-    func startCamera() {
-        Task {
-            await camera.start()
-        }
+    func startCamera() async {
+        await camera.start()
     }
 
     // MARK: Scanning
-    @Published var boundingRects: ScanedBoundingRects?
-    @Published var mrzRect: CGRect?
-    @Published var mrzResult: MRZResult?
+    @Published var boundingRects: ScannedBoundingRects?
+    @Published var mrzResult: ParserResult?
 
-    private var scanningTask: Task<(), Error>?
-
-    func startMRZScanning() async throws {
-        guard let cameraRect, let mrzRect else { return }
-
-        let correctedMRZRect = correctCoordinates(to: .leftTop, rect: mrzRect)
-        let roi = MRZScanner.convertRect(to: .normalizedRect, rect: correctedMRZRect, imageWidth: Int(cameraRect.width), imageHeight: Int(cameraRect.height))
-        let scanningStream = MRZScanner.scanLive(
-            imageStream: camera.imageStream,
-            configuration: .init(orientation: .up, regionOfInterest: roi, minimumTextHeight: 0.1, recognitionLevel: .fast)
-        )
-
-        scanningTask = Task {
-            for try await liveScanningResult in scanningStream {
-                Task { @MainActor in
-                    switch liveScanningResult {
-                    case .found(let scanningResult):
-                        boundingRects = correctBoundingRects(to: .center, rects: scanningResult.boundingRects)
-                        mrzResult = scanningResult.result
-                        scanningTask?.cancel()
-                    case .notFound(let boundingRects):
-                        self.boundingRects = correctBoundingRects(to: .center, rects: boundingRects)
-                    }
+    func startMRZScanning(cameraRect: CGRect, mrzRect: CGRect) async {
+        do {
+            for try await scanningResult in camera.imageStream.scanForMRZCode(
+                configuration: .init(
+                    orientation: .up,
+                    regionOfInterest: VNNormalizedRectForImageRect(
+                        correctCoordinates(to: .leftTop, rect: mrzRect),
+                        Int(cameraRect.width),
+                        Int(cameraRect.height)
+                    ),
+                    minimumTextHeight: 0.1,
+                    recognitionLevel: .fast
+                )
+            ) {
+                boundingRects = correctBoundingRects(to: .center, rects: scanningResult.boundingRects, mrzRect: mrzRect)
+                if let bestResult = scanningResult.best(repetitions: 2) {
+                    mrzResult = bestResult
+                    boundingRects = nil
+                    return
                 }
             }
+        } catch {
+            print(error.localizedDescription)
         }
     }
 
@@ -66,9 +60,7 @@ final class ViewModel: ObservableObject {
         case leftTop
     }
 
-    private func correctBoundingRects(to type: CorrectionType, rects: ScanedBoundingRects) -> ScanedBoundingRects {
-        guard let mrzRect else { fatalError("Camera rect must be set") }
-
+    private func correctBoundingRects(to type: CorrectionType, rects: ScannedBoundingRects, mrzRect: CGRect) -> ScannedBoundingRects {
         let convertedCoordinates = rects.convertedToImageRects(imageWidth: Int(mrzRect.width), imageHeight: Int(mrzRect.height))
         let correctedMRZRect = correctCoordinates(to: .leftTop, rect: mrzRect)
 
