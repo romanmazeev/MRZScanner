@@ -1,4 +1,5 @@
-[![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen.svg)](https://github.com/romanmazeev/MRZParser/blob/master/Package.swift)
+[![Build and test](https://github.com/romanmazeev/MRZScanner/actions/workflows/Build%20and%20test.yml/badge.svg)](https://github.com/romanmazeev/MRZScanner/actions/workflows/Build%20and%20test.yml)
+[![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen.svg)](https://github.com/romanmazeev/MRZScanner/blob/master/Package.swift)
 
 # MRZScanner
 Library for scanning documents via [MRZ](https://en.wikipedia.org/wiki/Machine-readable_passport) using [ Vision API](https://developer.apple.com/documentation/vision/vnrecognizetextrequest).
@@ -30,6 +31,9 @@ ScanningConfiguration(orientation: .up, regionOfInterest: roi, minimumTextHeight
 /// Live scanning
 for try await scanningResult in imageStream.scanForMRZCode(configuration: configuration) {
     // Handle `scanningResult` here
+    
+    // Use `return` to cancel scanning
+    return
 }
 
 /// Single scanning
