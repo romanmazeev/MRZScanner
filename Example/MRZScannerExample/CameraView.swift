@@ -34,7 +34,7 @@ final class CameraViewController: UIViewController {
     override func viewDidLoad() {
         previewLayer.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         previewLayer.videoGravity = .resizeAspectFill
-        previewLayer.connection?.videoOrientation = .portrait
+        previewLayer.connection?.videoRotationAngle = 90
         view.layer.addSublayer(previewLayer)
     }
 }

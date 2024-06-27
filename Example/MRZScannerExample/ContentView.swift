@@ -61,17 +61,10 @@ struct ContentView: View {
                                 size: .init(width: proxy.size.width - 40, height: proxy.size.width / 5))
             }
         }
-        .alert(isPresented: .init(get: { viewModel.mrzResult != nil }, set: { _ in viewModel.mrzResult = nil })) {
+        .alert(isPresented: .init(get: { viewModel.result != nil }, set: { _ in viewModel.result = nil })) {
             Alert(
-                title: Text("Important message"),
-                message: Text(createAlertMessage(mrzResult: viewModel.mrzResult!)),
-                dismissButton: .default(Text("Got it!")) {
-                    Task {
-                        guard let cameraRect, let mrzRect else { return }
-
-                        await viewModel.startMRZScanning(cameraRect: cameraRect, mrzRect: mrzRect)
-                    }
-                }
+                title: Text(createAlertTitle(result: viewModel.result!)),
+                message: Text(createAlertMessage(result: viewModel.result!))
             )
         }
         .task {
@@ -88,35 +81,49 @@ struct ContentView: View {
             .position(rect.origin)
     }
 
-    private func createAlertMessage(mrzResult: ParserResult) -> String {
-        var birthdateString: String?
-        var expiryDateString: String?
-
-        if let birthdate = mrzResult.birthdate {
-            birthdateString = dateFormatter.string(from: birthdate)
+    private func createAlertTitle(result: Result<ParserResult, Error>) -> String {
+        switch result {
+        case .success:
+            return "Scanned successfully"
+        case .failure:
+            return "Error"
         }
+    }
 
-        if let expiryDate = mrzResult.expiryDate {
-            expiryDateString = dateFormatter.string(from: expiryDate)
+    private func createAlertMessage(result: Result<ParserResult, Error>) -> String {
+        switch result {
+        case .success(let mrzResult):
+            var birthdateString: String?
+            var expiryDateString: String?
+
+            if let birthdate = mrzResult.birthdate {
+                birthdateString = dateFormatter.string(from: birthdate)
+            }
+
+            if let expiryDate = mrzResult.expiryDate {
+                expiryDateString = dateFormatter.string(from: expiryDate)
+            }
+
+            return """
+                   Document type: \(mrzResult.documentType)
+                   Country code: \(mrzResult.countryCode)
+                   Surnames: \(mrzResult.surnames)
+                   Given names: \(mrzResult.givenNames)
+                   Document number: \(mrzResult.documentNumber ?? "-")
+                   nationalityCountryCode: \(mrzResult.nationalityCountryCode)
+                   birthdate: \(birthdateString ?? "-")
+                   sex: \(mrzResult.sex)
+                   expiryDate: \(expiryDateString ?? "-")
+                   personalNumber: \(mrzResult.optionalData ?? "-")
+                   personalNumber2: \(mrzResult.optionalData2 ?? "-")
+                   """
+        case .failure(let error):
+            return error.localizedDescription
         }
-
-        return """
-               Document type: \(mrzResult.documentType)
-               Country code: \(mrzResult.countryCode)
-               Surnames: \(mrzResult.surnames)
-               Given names: \(mrzResult.givenNames)
-               Document number: \(mrzResult.documentNumber ?? "-")
-               nationalityCountryCode: \(mrzResult.nationalityCountryCode)
-               birthdate: \(birthdateString ?? "-")
-               sex: \(mrzResult.sex)
-               expiryDate: \(expiryDateString ?? "-")
-               personalNumber: \(mrzResult.optionalData ?? "-")
-               personalNumber2: \(mrzResult.optionalData2 ?? "-")
-               """
     }
 }
 
-extension CGRect: Hashable {
+extension CGRect: @retroactive Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(origin.x)
         hasher.combine(origin.y)
@@ -124,7 +131,6 @@ extension CGRect: Hashable {
         hasher.combine(size.height)
     }
 }
-
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
