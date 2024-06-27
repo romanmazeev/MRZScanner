@@ -13,8 +13,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/romanmazeev/MRZParser.git", branch: "master"),
-        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.1.2")
+        .package(url: "https://github.com/romanmazeev/MRZParser.git", from: "1.1.4"),
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.3.1"),
+        .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.0")
     ],
     targets: [
         .target(
@@ -24,12 +25,23 @@ let package = Package(
                 .product(
                     name: "Dependencies",
                     package: "swift-dependencies"
+                ),
+                .product(
+                    name: "DependenciesMacros",
+                    package: "swift-dependencies"
                 )
             ]
         ),
         .testTarget(
             name: "MRZScannerTests",
-            dependencies: ["MRZScanner"],
-            resources: [.process("Private/TextRecognizerTests/ImageTest.png")]),
+            dependencies: [
+                "MRZScanner",
+                .product(
+                    name: "CustomDump",
+                    package: "swift-custom-dump"
+                )
+            ],
+            resources: [.process("TestImage.png")]
+        )
     ]
 )

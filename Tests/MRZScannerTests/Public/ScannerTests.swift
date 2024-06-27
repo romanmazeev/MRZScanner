@@ -5,250 +5,349 @@
 //  Created by Roman Mazeev on 02/12/2023.
 //
 
+import CustomDump
 import Dependencies
 @testable import MRZScanner
+@preconcurrency import CoreImage
 import XCTest
 
 final class MRZScannerTests: XCTestCase {
-    private let image = CIImage(color: .blue)
-    private let scanningConfiguration: ScanningConfiguration = .mock()
-    private let textRecognizerResults: [TextRecognizer.Result] = [.init(results: ["test"], boundingRect: .zero)]
-    private let validatorResults: [Validator.Result] = [.init(result: "test", index: 0)]
-    private let boundingRectConverterResults: ScannedBoundingRects = .init(valid: [.init(), .init()], invalid: [.init()])
-    private let parserResult: ParserResult = .mock
-    private let trackerResult: TrackerResult = [.mock: 1]
+    private enum Event: Equatable, Sendable {
+        case recognize(ScanningConfiguration, Int)
+        case getValidatedResults([[String]])
+        case convert([TextRecognizer.Result], [Validator.Result])
+        case parse([String])
 
-    var validatorMock: Validator {
-        Validator { possibleLines in
-            XCTAssertEqual(self.textRecognizerResults.map(\.results), possibleLines)
-            return self.validatorResults
-        }
+        case currentResults
+        case track(ParserResult)
     }
 
-    var boundingRectConverterMock: BoundingRectConverter {
-        BoundingRectConverter { results, validLines in
-            XCTAssertEqual(results, self.textRecognizerResults)
-            XCTAssertEqual(validLines, self.validatorResults)
-            return self.boundingRectConverterResults
+    func testSingleImageSuccess() async throws {
+        let events = LockIsolated([Event]())
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration,scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return .mock
+            }
+        } operation: {
+            let currentResult = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
+            XCTAssertEqual(currentResult.results, .mock)
+            XCTAssertEqual(currentResult.boundingRects, .mock)
         }
+
+        XCTAssertNoDifference(
+            events.value,
+            [
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .parse(["test"]),
+                .convert([.mock], [.mock]),
+            ]
+        )
     }
 
-    func testSingleImageSuccess() throws {
-        let textRecognizerMock = TextRecognizer { configuration, scanningImage in
-            XCTAssertEqual(self.image, scanningImage)
-            XCTAssertEqual(self.scanningConfiguration, configuration)
+    func testSingleImageParserFailure() async throws {
+        let events = LockIsolated([Event]())
 
-            return self.textRecognizerResults
-        }
-
-        let parser = Parser { mrzLines in
-            XCTAssertEqual(mrzLines, self.validatorResults.map(\.result))
-            return self.parserResult
-        }
-
-        let scanningExpectation = expectation(description: "scanning")
-        Task {
-            await withDependencies {
-                $0.textRecognizer = textRecognizerMock
-                $0.validator = validatorMock
-                $0.boundingRectConverter = boundingRectConverterMock
-                $0.parser = parser
-            } operation: {
-                do {
-                    let currentResult = try await image.scanForMRZCode(configuration: scanningConfiguration)
-                    XCTAssertEqual(currentResult.results, parserResult)
-                    XCTAssertEqual(currentResult.boundingRects, boundingRectConverterResults)
-                } catch {
-                    XCTFail("Should not fail here. Error: \(error.localizedDescription)")
-                }
-
-                scanningExpectation.fulfill()
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return nil
+            }
+        } operation: {
+            do {
+                _ = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
+                XCTFail("Should fail here")
+            } catch {
+                XCTAssertEqual(try XCTUnwrap(error as? CIImage.ScanningError), .codeNotFound)
             }
         }
 
-        wait(for: [scanningExpectation], timeout: 10)
+        XCTAssertNoDifference(
+            events.value,
+            [
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .parse(["test"]),
+                .convert([.mock], [.mock])
+            ]
+        )
     }
 
-    func testSingleImageParserFailure() throws {
-        let textRecognizerMock = TextRecognizer { configuration, scanningImage in
-            XCTAssertEqual(self.image, scanningImage)
-            XCTAssertEqual(self.scanningConfiguration, configuration)
+    func testSingleImageTextRecognizerFailure() async throws {
+        let events = LockIsolated([Event]())
 
-            return self.textRecognizerResults
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                throw CIImage.ScanningError.codeNotFound
+            }
+        } operation: {
+            do {
+                _ = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
+                XCTFail("Should fail here")
+            } catch {
+                XCTAssertEqual(try XCTUnwrap(error as? CIImage.ScanningError), .codeNotFound)
+            }
         }
 
-        let parser = Parser { mrzLines in
-            XCTAssertEqual(mrzLines, self.validatorResults.map(\.result))
-            return nil
-        }
+        XCTAssertNoDifference(
+            events.value,
+            [
+                .recognize(.mock(), 1348268)
+            ]
+        )
+    }
 
-        let scanningExpectation = expectation(description: "scanning")
-        Task {
-            try await withDependencies {
-                $0.textRecognizer = textRecognizerMock
-                $0.validator = validatorMock
-                $0.boundingRectConverter = boundingRectConverterMock
-                $0.parser = parser
-            } operation: {
+    func testImageStreamSuccess() async throws {
+        let events = LockIsolated([Event]())
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return .mock
+            }
+
+            $0.tracker.currentResults = { @Sendable in
+                events.withValue { $0.append(.currentResults) }
+                return .mock
+            }
+            $0.tracker.track = { @Sendable parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        } operation: {
+            let resultsStream = AsyncStream<CIImage> { continuation in
                 do {
-                    _ = try await image.scanForMRZCode(configuration: scanningConfiguration)
+                    continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
+                    continuation.finish()
+                } catch {
+                    let errorMessage = error.localizedDescription
+                    XCTFail(errorMessage)
+                    fatalError(errorMessage)
+                }
+            }
+                .scanForMRZCode(configuration: .mock())
+
+            for try await liveScanningResult in resultsStream {
+                XCTAssertEqual(liveScanningResult.results, .mock)
+                XCTAssertEqual(liveScanningResult.boundingRects, .mock)
+                return
+            }
+        }
+
+        XCTAssertNoDifference(
+            events.value,
+            [
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .parse(["test"]),
+                .track(.mock),
+                .currentResults,
+                .convert([.mock], [.mock])
+            ]
+        )
+    }
+
+    func testImageStreamParsingFailure() async throws {
+        let events = LockIsolated([Event]())
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return nil
+            }
+            $0.tracker.currentResults = { @Sendable in
+                events.withValue { $0.append(.currentResults) }
+                return .mock
+            }
+        } operation: {
+            let resultsStream = AsyncStream<CIImage> { continuation in
+                do {
+                    continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
+                    continuation.finish()
+                } catch {
+                    let errorMessage = error.localizedDescription
+                    XCTFail(errorMessage)
+                    fatalError(errorMessage)
+                }
+            }
+                .scanForMRZCode(configuration: .mock())
+
+            for try await liveScanningResult in resultsStream {
+                XCTAssertEqual(liveScanningResult.results, .mock)
+                XCTAssertEqual(liveScanningResult.boundingRects, .mock)
+                return
+            }
+        }
+
+        XCTAssertNoDifference(
+            events.value,
+            [
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .parse(["test"]),
+                .currentResults,
+                .convert([.mock], [.mock])
+            ]
+        )
+    }
+
+    func testImageStreamTextRecognizerFailure() async throws {
+        let events = LockIsolated([Event]())
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                throw CIImage.ScanningError.codeNotFound
+            }
+        } operation: {
+            let resultsStream = AsyncStream<CIImage> { continuation in
+                do {
+                    continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
+                    continuation.finish()
+                } catch {
+                    let errorMessage = error.localizedDescription
+                    XCTFail(errorMessage)
+                    fatalError(errorMessage)
+                }
+            }
+                .scanForMRZCode(configuration: .mock())
+
+            do {
+                for try await _ in resultsStream {
                     XCTFail("Should fail here")
-                } catch {
-                    XCTAssert(try XCTUnwrap(error as? CIImage.ScanningError) == .codeNotFound)
                 }
-                scanningExpectation.fulfill()
+            } catch {
+                let error = try XCTUnwrap(error as? CIImage.ScanningError)
+                XCTAssertEqual(error, .codeNotFound)
             }
         }
 
-        wait(for: [scanningExpectation], timeout: 10)
+        XCTAssertNoDifference(
+            events.value,
+            [
+                .recognize(.mock(), 1348268)
+            ]
+        )
     }
+}
 
-    func testSingleImageTextRecognizerFailure() throws {
-        let textRecognizerMock = TextRecognizer { configuration, scanningImage in
-            XCTAssertEqual(self.image, scanningImage)
-            XCTAssertEqual(self.scanningConfiguration, configuration)
+private extension TextRecognizer.Result {
+    static var mock: Self { .init(results: ["test"], boundingRect: .zero) }
+}
 
-            throw CIImage.ScanningError.codeNotFound
+private extension Validator.Result {
+    static var mock: Self { .init(result: "test", index: 0) }
+}
+
+private extension TrackerResult {
+    static var mock: Self { [.mock: 1] }
+}
+
+private extension Data {
+    static var imageMock: Data {
+        do {
+            let fileURL = try XCTUnwrap(Bundle.module.url(forResource: "TestImage", withExtension: "png"))
+            return try Data(contentsOf: fileURL)
+        } catch {
+            let errorMessage = error.localizedDescription
+            XCTFail(errorMessage)
+            fatalError(errorMessage)
         }
-
-        let scanningExpectation = expectation(description: "scanning")
-        Task {
-            try await withDependencies {
-                $0.textRecognizer = textRecognizerMock
-            } operation: {
-                do {
-                    _ = try await image.scanForMRZCode(configuration: scanningConfiguration)
-                    XCTFail("Should fail here")
-                } catch {
-                    XCTAssert(try XCTUnwrap(error as? CIImage.ScanningError) == .codeNotFound)
-                }
-                scanningExpectation.fulfill()
-            }
-        }
-
-        wait(for: [scanningExpectation], timeout: 10)
     }
+}
 
-    func testImageStreamSuccess() {
-        let textRecognizerMock = TextRecognizer { configuration, scanningImage in
-            XCTAssertEqual(self.image, scanningImage)
-            XCTAssertEqual(self.scanningConfiguration, configuration)
-
-            return self.textRecognizerResults
+private extension CIImage {
+    var base64EncodedString: String {
+        let context = CIContext(options: nil)
+        guard let cgImage = context.createCGImage(self, from: self.extent) else {
+            let errorMessage = "Failed to create CGImage"
+            XCTFail(errorMessage)
+            fatalError(errorMessage)
         }
 
-        let parser = Parser { mrzLines in
-            XCTAssertEqual(mrzLines, self.validatorResults.map(\.result))
-            return self.parserResult
-        }
+        let width = cgImage.width
+        let height = cgImage.height
+        let bitsPerComponent = 8
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
 
-        let tracker = Tracker { _, result in
-            XCTAssertEqual(result, self.parserResult)
-            return self.trackerResult
-        }
+        var data = Data(count: height * bytesPerRow)
 
-        let scanningExpectation = expectation(description: "scanning")
-        Task {
-            await withDependencies {
-                $0.textRecognizer = textRecognizerMock
-                $0.validator = validatorMock
-                $0.boundingRectConverter = boundingRectConverterMock
-                $0.parser = parser
-                $0.tracker = tracker
-            } operation: {
-                let resultsStream = AsyncStream<CIImage> { continuation in
-                    continuation.yield(image)
-                    continuation.finish()
-                }
-                    .scanForMRZCode(configuration: scanningConfiguration)
-
-                do {
-                    for try await liveScanningResult in resultsStream {
-                        XCTAssertEqual(liveScanningResult.results, trackerResult)
-                        XCTAssertEqual(liveScanningResult.boundingRects, boundingRectConverterResults)
-                        scanningExpectation.fulfill()
-                    }
-                } catch {
-                    XCTFail("Should not fail here. Error: \(error)")
-                }
+        data.withUnsafeMutableBytes { ptr in
+            if let context = CGContext(
+                data: ptr.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: bitsPerComponent,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: bitmapInfo.rawValue
+            ) {
+                context.draw(cgImage, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
             }
         }
 
-        wait(for: [scanningExpectation], timeout: 10)
+        return data.base64EncodedString()
     }
+}
 
-
-    func testImageStreamParsingFailure() throws {
-        let textRecognizerMock = TextRecognizer { configuration, scanningImage in
-            XCTAssertEqual(self.image, scanningImage)
-            XCTAssertEqual(self.scanningConfiguration, configuration)
-
-            return self.textRecognizerResults
-        }
-
-        let parser = Parser { mrzLines in
-            XCTAssertEqual(mrzLines, self.validatorResults.map(\.result))
-            return nil
-        }
-
-        let scanningExpectation = expectation(description: "scanning")
-        Task {
-            await withDependencies {
-                $0.textRecognizer = textRecognizerMock
-                $0.validator = validatorMock
-                $0.boundingRectConverter = boundingRectConverterMock
-                $0.parser = parser
-            } operation: {
-                let resultsStream = AsyncStream<CIImage> { continuation in
-                    continuation.yield(image)
-                    continuation.finish()
-                }
-                    .scanForMRZCode(configuration: scanningConfiguration)
-
-                do {
-                    for try await liveScanningResult in resultsStream {
-                        XCTAssertEqual(liveScanningResult.results, [:])
-                        XCTAssertEqual(liveScanningResult.boundingRects, boundingRectConverterResults)
-                        scanningExpectation.fulfill()
-                    }
-                } catch {
-                    XCTFail("Should not fail here. Error: \(error)")
-                }
-            }
-        }
-
-        wait(for: [scanningExpectation], timeout: 10)
-    }
-
-    func testImageStreamTextRecognizerFailure() throws {
-        let textRecognizerMock = TextRecognizer { configuration, scanningImage in
-            XCTAssertEqual(self.image, scanningImage)
-            XCTAssertEqual(self.scanningConfiguration, configuration)
-
-            throw CIImage.ScanningError.codeNotFound
-        }
-
-        let scanningExpectation = expectation(description: "scanning")
-        Task {
-            try await withDependencies {
-                $0.textRecognizer = textRecognizerMock
-            } operation: {
-                let resultsStream = AsyncStream<CIImage> { continuation in
-                    continuation.yield(image)
-                    continuation.finish()
-                }
-                    .scanForMRZCode(configuration: scanningConfiguration)
-
-                do {
-                    for try await _ in resultsStream {}
-                } catch {
-                    let error = try XCTUnwrap(error as? CIImage.ScanningError)
-                    XCTAssertEqual(error, .codeNotFound)
-                    scanningExpectation.fulfill()
-                }
-            }
-        }
-
-        wait(for: [scanningExpectation], timeout: 10)
+extension ScanningConfiguration: @retroactive Equatable {
+    public static func == (lhs: ScanningConfiguration, rhs: ScanningConfiguration) -> Bool {
+        lhs.orientation == rhs.orientation &&
+        lhs.regionOfInterest == rhs.regionOfInterest &&
+        lhs.minimumTextHeight == rhs.minimumTextHeight &&
+        lhs.recognitionLevel == rhs.recognitionLevel
     }
 }

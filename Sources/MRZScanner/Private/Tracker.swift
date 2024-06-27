@@ -6,23 +6,26 @@
 //
 
 import Dependencies
+import DependenciesMacros
 
+public typealias TrackerResult = [ParserResult: Int]
+
+@DependencyClient
 struct Tracker: Sendable {
-    let updateResults: @Sendable (_ results: TrackerResult, _ result: ParserResult) -> TrackerResult
+    var currentResults: @Sendable () -> TrackerResult = { [:] }
+    var track: @Sendable (_ result: ParserResult) -> Void
 }
 
 extension Tracker: DependencyKey {
     static var liveValue: Self {
-        .init(
-            updateResults: { results, result in
-                var seenResults = results
-                guard let seenResultFrequency = seenResults[result] else {
-                    seenResults[result] = 1
-                    return seenResults
-                }
+        let seenResults: LockIsolated<TrackerResult> = .init([:])
 
-                seenResults[result] = seenResultFrequency + 1
-                return seenResults
+        return .init(
+            currentResults: { seenResults.value },
+            track: { result in
+                seenResults.withValue { seenResults in
+                    seenResults[result, default: 0] += 1
+                }
             }
         )
     }
@@ -37,10 +40,6 @@ extension DependencyValues {
 
 #if DEBUG
 extension Tracker: TestDependencyKey {
-    static var testValue: Self {
-        Self(
-            updateResults: unimplemented("Tracker.updateResults")
-        )
-    }
+    static let testValue = Self()
 }
 #endif

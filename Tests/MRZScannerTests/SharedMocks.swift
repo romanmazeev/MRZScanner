@@ -1,5 +1,5 @@
 //
-//  Mocks.swift
+//  SharedMocks.swift
 //  
 //
 //  Created by Roman Mazeev on 01/12/2023.
@@ -7,7 +7,6 @@
 
 import Foundation
 @testable import MRZScanner
-import Vision
 
 extension ParserResult {
     static var mock: Self {
@@ -27,6 +26,28 @@ extension ParserResult {
             optionalData2: ""
         )
     }
+
+    static var secondMock: Self {
+        .init(
+            format: .td1,
+            documentType: .passport,
+            documentTypeAdditional: "r",
+            countryCode: "secondTest",
+            surnames: "secondTest",
+            givenNames: "secondTest",
+            documentNumber: "secondTest",
+            nationalityCountryCode: "secondTest",
+            birthdate: .mock,
+            sex: .male,
+            expiryDate: .mock,
+            optionalData: "",
+            optionalData2: ""
+        )
+    }
+}
+
+extension ScannedBoundingRects {
+    static var mock: Self { .init(valid: [.init(), .init()], invalid: [.init()]) }
 }
 
 extension Date {
@@ -43,28 +64,5 @@ extension ScanningConfiguration {
             minimumTextHeight: 0,
             recognitionLevel: .fast
         )
-    }
-}
-
-extension ScannedBoundingRects: Equatable {
-    public static func == (lhs: ScannedBoundingRects, rhs: ScannedBoundingRects) -> Bool {
-        lhs.valid == rhs.valid &&
-        lhs.invalid == rhs.invalid
-    }
-}
-
-extension TextRecognizer.Result: Equatable {
-    public static func == (lhs: TextRecognizer.Result, rhs: TextRecognizer.Result) -> Bool {
-        lhs.results == rhs.results &&
-        lhs.boundingRect == rhs.boundingRect
-    }
-}
-
-extension ScanningConfiguration: Equatable {
-    public static func == (lhs: ScanningConfiguration, rhs: ScanningConfiguration) -> Bool {
-        lhs.orientation == rhs.orientation &&
-        lhs.regionOfInterest == rhs.regionOfInterest &&
-        lhs.minimumTextHeight == rhs.minimumTextHeight &&
-        lhs.recognitionLevel == rhs.recognitionLevel
     }
 }

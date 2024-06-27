@@ -9,7 +9,8 @@ import CoreImage
 import Dependencies
 import Vision
 
-public struct ScanningConfiguration {
+/// Configuration for scanning
+public struct ScanningConfiguration: Sendable {
     let orientation: CGImagePropertyOrientation
     let regionOfInterest: CGRect
     let minimumTextHeight: Float
@@ -26,51 +27,27 @@ public struct ScanningConfiguration {
 // MARK: Image stream scanning
 
 public extension AsyncStream<CIImage> {
-    func scanForMRZCode(
-        configuration: ScanningConfiguration,
-        scanningPriority: TaskPriority? = nil
-    ) -> AsyncThrowingStream<ScanningResult<TrackerResult>, Error> {
-        .init { continuation in
-            let scanningTask = Task {
-                let seenResults: LockIsolated<TrackerResult> = .init([:])
+    func scanForMRZCode(configuration: ScanningConfiguration) -> AsyncThrowingStream<ScanningResult<TrackerResult>, Error> {
+        @Dependency(\.tracker) var tracker
 
-                for await image in self {
-                    await withTaskGroup(of: Void.self) { group in
-                        _ = group.addTaskUnlessCancelled(priority: scanningPriority) {
-                            do {
-                                @Dependency(\.textRecognizer) var textRecognizer
-                                let recognizerResult = try await textRecognizer.recognize(configuration, image)
+        return map { image in
+            @Dependency(\.textRecognizer) var textRecognizer
+            let recognizerResult = try await textRecognizer.recognize(configuration: configuration, scanningImage: image)
 
-                                @Dependency(\.validator) var validator
-                                let validatedResults = validator.getValidatedResults(recognizerResult.map(\.results))
+            @Dependency(\.validator) var validator
+            let validatedResults = validator.getValidatedResults(possibleLines: recognizerResult.map(\.results))
 
-                                @Dependency(\.boundingRectConverter) var boundingRectConverter
-                                let boundingRects = boundingRectConverter.convert(recognizerResult, validatedResults)
+            @Dependency(\.boundingRectConverter) var boundingRectConverter
+            async let boundingRects = boundingRectConverter.convert(results: recognizerResult, validLines: validatedResults)
 
-                                @Dependency(\.parser) var parser
-                                guard let parsedResult = parser.parse(validatedResults.map(\.result)) else {
-                                    continuation.yield(.init(results: seenResults.value, boundingRects: boundingRects))
-                                    return
-                                }
-
-                                @Dependency(\.tracker) var tracker
-                                seenResults.withValue {
-                                    $0 = tracker.updateResults(seenResults.value, parsedResult)
-                                }
-
-                                continuation.yield(.init(results: seenResults.value, boundingRects: boundingRects))
-                            } catch {
-                                continuation.finish(throwing: error)
-                            }
-                        }
-                    }
-                }
+            @Dependency(\.parser) var parser
+            guard let parsedResult = parser.parse(mrzLines: validatedResults.map(\.result)) else {
+                return await .init(results: tracker.currentResults(), boundingRects: boundingRects)
             }
 
-            continuation.onTermination = { _ in
-                scanningTask.cancel()
-            }
-        }
+            tracker.track(result: parsedResult)
+            return await .init(results: tracker.currentResults(), boundingRects: boundingRects)
+        }.eraseToThrowingStream()
     }
 }
 
@@ -83,19 +60,19 @@ public extension CIImage {
 
     func scanForMRZCode(configuration: ScanningConfiguration) async throws -> ScanningResult<ParserResult> {
         @Dependency(\.textRecognizer) var textRecognizer
-        let recognizerResult = try await textRecognizer.recognize(configuration, self)
+        let recognizerResult = try await textRecognizer.recognize(configuration: configuration, scanningImage: self)
 
         @Dependency(\.validator) var validator
-        let validatedResults = validator.getValidatedResults(recognizerResult.map(\.results))
+        let validatedResults = validator.getValidatedResults(possibleLines: recognizerResult.map(\.results))
 
         @Dependency(\.boundingRectConverter) var boundingRectConverter
-        let boundingRects = boundingRectConverter.convert(recognizerResult, validatedResults)
+        async let boundingRects = boundingRectConverter.convert(results: recognizerResult, validLines: validatedResults)
 
         @Dependency(\.parser) var parser
-        guard let parsedResult = parser.parse(validatedResults.map(\.result)) else {
+        guard let parsedResult = parser.parse(mrzLines: validatedResults.map(\.result)) else {
             throw ScanningError.codeNotFound
         }
 
-        return .init(results: parsedResult, boundingRects: boundingRects)
+        return await .init(results: parsedResult, boundingRects: boundingRects)
     }
 }

@@ -6,8 +6,10 @@
 //
 
 import Dependencies
+import DependenciesMacros
 import MRZParser
 
+@DependencyClient
 struct Validator: Sendable {
     struct Result {
         /// MRZLine
@@ -16,33 +18,31 @@ struct Validator: Sendable {
         let index: Int
     }
 
-    let getValidatedResults: @Sendable (_ possibleLines: [[String]]) -> [Result]
+    var getValidatedResults: @Sendable (_ possibleLines: [[String]]) -> [Result] = { _ in [] }
 }
 
 extension Validator: DependencyKey {
     static var liveValue: Self {
-        .init(
-            getValidatedResults: { possibleLines in
-                var validLines: [Result] = []
+        .init { possibleLines in
+            var validLines: [Result] = []
 
-                for validMRZCode in MRZFormat.allCases {
+            for validMRZCode in MRZFormat.allCases {
+                guard validLines.count < validMRZCode.linesCount else { break }
+                for (index, lines) in possibleLines.enumerated() {
                     guard validLines.count < validMRZCode.linesCount else { break }
-                    for (index, lines) in possibleLines.enumerated() {
-                        guard validLines.count < validMRZCode.linesCount else { break }
-                        let spaceFreeLines = lines.lazy.map { $0.filter { !$0.isWhitespace } }
-                        guard let mostLikelyLine = spaceFreeLines.first(where: {
-                            $0.count == validMRZCode.lineLength
-                        }) else { continue }
-                        validLines.append(.init(result: mostLikelyLine, index: index))
-                    }
-
-                    if validLines.count != validMRZCode.linesCount {
-                        validLines = []
-                    }
+                    let spaceFreeLines = lines.lazy.map { $0.filter { !$0.isWhitespace } }
+                    guard let mostLikelyLine = spaceFreeLines.first(where: {
+                        $0.count == validMRZCode.lineLength
+                    }) else { continue }
+                    validLines.append(.init(result: mostLikelyLine, index: index))
                 }
-                return validLines
+
+                if validLines.count != validMRZCode.linesCount {
+                    validLines = []
+                }
             }
-        )
+            return validLines
+        }
     }
 }
 
@@ -55,10 +55,6 @@ extension DependencyValues {
 
 #if DEBUG
 extension Validator: TestDependencyKey {
-    static var testValue: Self {
-        Self(
-            getValidatedResults: unimplemented("Validator.getValidatedResults")
-        )
-    }
+    static let testValue = Self()
 }
 #endif
