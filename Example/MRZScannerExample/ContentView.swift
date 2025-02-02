@@ -96,20 +96,15 @@ struct ContentView: View {
             var birthdateString: String?
             var expiryDateString: String?
 
-            if let birthdate = mrzResult.birthdate {
-                birthdateString = dateFormatter.string(from: birthdate)
-            }
-
-            if let expiryDate = mrzResult.expiryDate {
-                expiryDateString = dateFormatter.string(from: expiryDate)
-            }
+            birthdateString = dateFormatter.string(from: mrzResult.birthdate)
+            expiryDateString = dateFormatter.string(from: mrzResult.expiryDate)
 
             return """
                    Document type: \(mrzResult.documentType)
                    Country code: \(mrzResult.countryCode)
                    Surnames: \(mrzResult.surnames)
                    Given names: \(mrzResult.givenNames)
-                   Document number: \(mrzResult.documentNumber ?? "-")
+                   Document number: \(mrzResult.documentNumber)
                    nationalityCountryCode: \(mrzResult.nationalityCountryCode)
                    birthdate: \(birthdateString ?? "-")
                    sex: \(mrzResult.sex)

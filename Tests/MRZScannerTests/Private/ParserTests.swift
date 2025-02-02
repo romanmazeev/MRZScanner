@@ -30,6 +30,7 @@ final class ParserTests: XCTestCase {
 
         let mrzStrings = ["IRUTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<", "D231458907UTO7408122F1204159<<<<<<<6"]
         let result = ParserResult(
+            mrzKey: "D23145890774081221204159",
             format: .td2,
             documentType: .id,
             documentTypeAdditional: "R",
@@ -41,7 +42,7 @@ final class ParserTests: XCTestCase {
             birthdate: try XCTUnwrap(dateFormatter.date(from: "740812")),
             sex: .female,
             expiryDate: try XCTUnwrap(dateFormatter.date(from: "120415")),
-            optionalData: "",
+            optionalData: nil,
             optionalData2: nil
         )
 

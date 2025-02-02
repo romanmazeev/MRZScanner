@@ -19,7 +19,7 @@ struct Parser: Sendable {
 extension Parser: DependencyKey {
     static var liveValue: Self {
         .init { mrzLines in
-            MRZParser(isOCRCorrectionEnabled: true).parse(mrzLines: mrzLines)
+            MRZParser.parse(mrzLines: mrzLines, isOCRCorrectionEnabled: true)
         }
     }
 }

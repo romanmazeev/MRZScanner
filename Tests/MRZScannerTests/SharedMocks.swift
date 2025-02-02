@@ -11,6 +11,7 @@ import Foundation
 extension ParserResult {
     static var mock: Self {
         .init(
+            mrzKey: "",
             format: .td3,
             documentType: .passport,
             documentTypeAdditional: "A",
@@ -29,6 +30,7 @@ extension ParserResult {
 
     static var secondMock: Self {
         .init(
+            mrzKey: "",
             format: .td1,
             documentType: .passport,
             documentTypeAdditional: "r",

@@ -50,6 +50,7 @@ final class ScanningResultTests: XCTestCase {
 private extension ParserResult {
     static var thirdMock: Self {
         .init(
+            mrzKey: "",
             format: .td2,
             documentType: .id,
             documentTypeAdditional: "r",
