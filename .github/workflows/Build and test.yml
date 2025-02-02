@@ -12,6 +12,6 @@ jobs:
     runs-on: macos-13
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build and test
-      run: swift test -v --enable-code-coverage
+    - uses: actions/checkout@v3
+    - name: Run tests
+      run: swift test --enable-code-coverage
