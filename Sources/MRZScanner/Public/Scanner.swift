@@ -55,11 +55,7 @@ public extension AsyncStream<CIImage> {
 // MARK: Single image scanning
 
 public extension CIImage {
-    enum ScanningError: Error {
-        case codeNotFound
-    }
-
-    func scanForMRZCode(configuration: ScanningConfiguration) async throws -> ScanningResult<ParserResult> {
+    func scanForMRZCode(configuration: ScanningConfiguration) async throws -> ScanningResult<ParserResult>? {
         @Dependency(\.textRecognizer) var textRecognizer
         let recognizerResult = try await textRecognizer.recognize(configuration: configuration, scanningImage: self)
 
@@ -71,7 +67,7 @@ public extension CIImage {
 
         @Dependency(\.parser) var parser
         guard let parsedResult = parser.parse(mrzLines: validatedResults.map(\.result)) else {
-            throw ScanningError.codeNotFound
+            return nil
         }
 
         return await .init(results: parsedResult, boundingRects: boundingRects)
