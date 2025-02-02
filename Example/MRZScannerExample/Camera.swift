@@ -11,17 +11,20 @@ import CoreImage
 final class Camera: NSObject {
     let captureSession = AVCaptureSession()
 
-    private(set) lazy var imageStream: AsyncStream<CIImage> = {
+    var imageStream: AsyncStream<CIImage> {
         AsyncStream { continuation in
             imageStreamCallback = { ciImage in
                 continuation.yield(ciImage)
             }
         }
-    }()
-    private var imageStreamCallback: ((CIImage) -> Void)?
+    }
 
+    private var imageStreamCallback: ((CIImage) -> Void)?
     private let captureDevice = AVCaptureDevice.default(for: .video)
+   
+    // TODO: Refactor to use Swift Concurrency
     private let sessionQueue = DispatchQueue(label: "Session queue")
+    
     private var isCaptureSessionConfigured = false
     private var deviceInput: AVCaptureDeviceInput?
     private var videoOutput: AVCaptureVideoDataOutput?
