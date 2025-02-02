@@ -28,7 +28,8 @@ public struct ScanningConfiguration: Sendable {
 
 public extension AsyncStream<CIImage> {
     func scanForMRZCode(configuration: ScanningConfiguration) -> AsyncThrowingStream<ScanningResult<TrackerResult>, Error> {
-        @Dependency(\.tracker) var tracker
+        @Dependency(\.tracker.create) var createTracker
+        let tracker = createTracker()
 
         return map { image in
             @Dependency(\.textRecognizer) var textRecognizer
@@ -42,11 +43,11 @@ public extension AsyncStream<CIImage> {
 
             @Dependency(\.parser) var parser
             guard let parsedResult = parser.parse(mrzLines: validatedResults.map(\.result)) else {
-                return await .init(results: tracker.currentResults(), boundingRects: boundingRects)
+                return await .init(results: tracker.seenResults, boundingRects: boundingRects)
             }
 
             tracker.track(result: parsedResult)
-            return await .init(results: tracker.currentResults(), boundingRects: boundingRects)
+            return await .init(results: tracker.seenResults, boundingRects: boundingRects)
         }.eraseToThrowingStream()
     }
 }

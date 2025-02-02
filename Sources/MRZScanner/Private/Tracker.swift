@@ -12,22 +12,32 @@ public typealias TrackerResult = [ParserResult: Int]
 
 @DependencyClient
 struct Tracker: Sendable {
-    var currentResults: @Sendable () -> TrackerResult = { [:] }
-    var track: @Sendable (_ result: ParserResult) -> Void
+    var create: @Sendable () -> TrackerProtocol = { TrackerImplementation() }
 }
 
 extension Tracker: DependencyKey {
     static var liveValue: Self {
-        let seenResults: LockIsolated<TrackerResult> = .init([:])
-
-        return .init(
-            currentResults: { seenResults.value },
-            track: { result in
-                seenResults.withValue { seenResults in
-                    seenResults[result, default: 0] += 1
-                }
-            }
+        .init(
+            create: { TrackerImplementation() }
         )
+    }
+}
+
+protocol TrackerProtocol: Sendable {
+    var seenResults: TrackerResult { get }
+
+    func track(result: ParserResult)
+}
+
+private final class TrackerImplementation: TrackerProtocol {
+    private let results: LockIsolated<TrackerResult> = .init([:])
+
+    var seenResults: TrackerResult {
+        results.value
+    }
+
+    func track(result: ParserResult) {
+        results.withValue { $0[result, default: 0] += 1 }
     }
 }
 

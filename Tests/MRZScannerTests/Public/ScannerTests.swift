@@ -18,7 +18,8 @@ final class MRZScannerTests: XCTestCase {
         case convert([TextRecognizer.Result], [Validator.Result])
         case parse([String])
 
-        case currentResults
+        case createTracker
+        case seenResults
         case track(ParserResult)
     }
 
@@ -44,8 +45,8 @@ final class MRZScannerTests: XCTestCase {
             }
         } operation: {
             let currentResult = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
-            XCTAssertEqual(currentResult.results, .mock)
-            XCTAssertEqual(currentResult.boundingRects, .mock)
+            XCTAssertEqual(currentResult?.results, .mock)
+            XCTAssertEqual(currentResult?.boundingRects, .mock)
         }
 
         expectNoDifference(
@@ -80,12 +81,8 @@ final class MRZScannerTests: XCTestCase {
                 return nil
             }
         } operation: {
-            do {
-                _ = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
-                XCTFail("Should fail here")
-            } catch {
-                XCTAssertEqual(try XCTUnwrap(error as? CIImage.ScanningError), .codeNotFound)
-            }
+            let result = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
+            XCTAssertNil(result)
         }
 
         expectNoDifference(
@@ -105,14 +102,14 @@ final class MRZScannerTests: XCTestCase {
         try await withDependencies {
             $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
                 events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
-                throw CIImage.ScanningError.codeNotFound
+                throw MockError.mock
             }
         } operation: {
             do {
                 _ = try await XCTUnwrap(CIImage(data: .imageMock)).scanForMRZCode(configuration: .mock())
                 XCTFail("Should fail here")
             } catch {
-                XCTAssertEqual(try XCTUnwrap(error as? CIImage.ScanningError), .codeNotFound)
+                XCTAssertEqual(try XCTUnwrap(error as? MockError), .mock)
             }
         }
 
@@ -126,6 +123,17 @@ final class MRZScannerTests: XCTestCase {
 
     func testImageStreamSuccess() async throws {
         let events = LockIsolated([Event]())
+        let trackerMock = TrackerMock()
+        trackerMock.onSeenResultsCall.withValue {
+            $0 = {
+                events.withValue { $0.append(.seenResults) }
+            }
+        }
+        trackerMock.onTrackCall.withValue {
+            $0 = { parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        }
 
         try await withDependencies {
             $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
@@ -144,13 +152,9 @@ final class MRZScannerTests: XCTestCase {
                 events.withValue { $0.append(.parse(mrzLines)) }
                 return .mock
             }
-
-            $0.tracker.currentResults = { @Sendable in
-                events.withValue { $0.append(.currentResults) }
-                return .mock
-            }
-            $0.tracker.track = { @Sendable parserResult in
-                events.withValue { $0.append(.track(parserResult)) }
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return trackerMock
             }
         } operation: {
             let resultsStream = AsyncStream<CIImage> { continuation in
@@ -158,9 +162,7 @@ final class MRZScannerTests: XCTestCase {
                     continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
                     continuation.finish()
                 } catch {
-                    let errorMessage = error.localizedDescription
-                    XCTFail(errorMessage)
-                    fatalError(errorMessage)
+                    XCTFail(error.localizedDescription)
                 }
             }
                 .scanForMRZCode(configuration: .mock())
@@ -168,18 +170,106 @@ final class MRZScannerTests: XCTestCase {
             for try await liveScanningResult in resultsStream {
                 XCTAssertEqual(liveScanningResult.results, .mock)
                 XCTAssertEqual(liveScanningResult.boundingRects, .mock)
-                return
             }
         }
 
         expectNoDifference(
             events.value,
             [
+                .createTracker,
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
                 .parse(["test"]),
                 .track(.mock),
-                .currentResults,
+                .seenResults,
+                .convert([.mock], [.mock])
+            ]
+        )
+    }
+
+    func testImageStreamSuccessScanTwice() async throws {
+        let events = LockIsolated([Event]())
+        let trackerMock = TrackerMock()
+        trackerMock.onSeenResultsCall.withValue {
+            $0 = {
+                events.withValue { $0.append(.seenResults) }
+            }
+        }
+        trackerMock.onTrackCall.withValue {
+            $0 = { parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        }
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return .mock
+            }
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return trackerMock
+            }
+        } operation: {
+            let firstResultsStream = AsyncStream<CIImage> { continuation in
+                do {
+                    continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
+                    continuation.finish()
+                } catch {
+                    XCTFail(error.localizedDescription)
+                }
+            }
+                .scanForMRZCode(configuration: .mock())
+
+            for try await liveScanningResult in firstResultsStream {
+                XCTAssertEqual(liveScanningResult.results, .mock)
+                XCTAssertEqual(liveScanningResult.boundingRects, .mock)
+            }
+
+            let secondResultsStream = AsyncStream<CIImage> { continuation in
+                do {
+                    continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
+                    continuation.finish()
+                } catch {
+                    XCTFail(error.localizedDescription)
+                }
+            }
+                .scanForMRZCode(configuration: .mock())
+
+            for try await liveScanningResult in secondResultsStream {
+                XCTAssertEqual(liveScanningResult.results, .mock)
+                XCTAssertEqual(liveScanningResult.boundingRects, .mock)
+            }
+        }
+
+        expectNoDifference(
+            events.value,
+            [
+                .createTracker,
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .parse(["test"]),
+                .track(.mock),
+                .seenResults,
+                .convert([.mock], [.mock]),
+                .createTracker,
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .parse(["test"]),
+                .track(.mock),
+                .seenResults,
                 .convert([.mock], [.mock])
             ]
         )
@@ -187,6 +277,17 @@ final class MRZScannerTests: XCTestCase {
 
     func testImageStreamParsingFailure() async throws {
         let events = LockIsolated([Event]())
+        let trackerMock = TrackerMock()
+        trackerMock.onSeenResultsCall.withValue {
+            $0 = {
+                events.withValue { $0.append(.seenResults) }
+            }
+        }
+        trackerMock.onTrackCall.withValue {
+            $0 = { parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        }
 
         try await withDependencies {
             $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
@@ -205,9 +306,9 @@ final class MRZScannerTests: XCTestCase {
                 events.withValue { $0.append(.parse(mrzLines)) }
                 return nil
             }
-            $0.tracker.currentResults = { @Sendable in
-                events.withValue { $0.append(.currentResults) }
-                return .mock
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return trackerMock
             }
         } operation: {
             let resultsStream = AsyncStream<CIImage> { continuation in
@@ -215,9 +316,7 @@ final class MRZScannerTests: XCTestCase {
                     continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
                     continuation.finish()
                 } catch {
-                    let errorMessage = error.localizedDescription
-                    XCTFail(errorMessage)
-                    fatalError(errorMessage)
+                    XCTFail(error.localizedDescription)
                 }
             }
                 .scanForMRZCode(configuration: .mock())
@@ -225,17 +324,17 @@ final class MRZScannerTests: XCTestCase {
             for try await liveScanningResult in resultsStream {
                 XCTAssertEqual(liveScanningResult.results, .mock)
                 XCTAssertEqual(liveScanningResult.boundingRects, .mock)
-                return
             }
         }
 
         expectNoDifference(
             events.value,
             [
+                .createTracker,
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
                 .parse(["test"]),
-                .currentResults,
+                .seenResults,
                 .convert([.mock], [.mock])
             ]
         )
@@ -247,7 +346,7 @@ final class MRZScannerTests: XCTestCase {
         try await withDependencies {
             $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
                 events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
-                throw CIImage.ScanningError.codeNotFound
+                throw MockError.mock
             }
         } operation: {
             let resultsStream = AsyncStream<CIImage> { continuation in
@@ -255,9 +354,7 @@ final class MRZScannerTests: XCTestCase {
                     continuation.yield(try XCTUnwrap(CIImage(data: .imageMock)))
                     continuation.finish()
                 } catch {
-                    let errorMessage = error.localizedDescription
-                    XCTFail(errorMessage)
-                    fatalError(errorMessage)
+                    XCTFail(error.localizedDescription)
                 }
             }
                 .scanForMRZCode(configuration: .mock())
@@ -267,8 +364,8 @@ final class MRZScannerTests: XCTestCase {
                     XCTFail("Should fail here")
                 }
             } catch {
-                let error = try XCTUnwrap(error as? CIImage.ScanningError)
-                XCTAssertEqual(error, .codeNotFound)
+                let error = try XCTUnwrap(error as? MockError)
+                XCTAssertEqual(error, .mock)
             }
         }
 
@@ -281,6 +378,10 @@ final class MRZScannerTests: XCTestCase {
     }
 }
 
+private enum MockError: Error {
+    case mock
+}
+
 private extension TextRecognizer.Result {
     static var mock: Self { .init(results: ["test"], boundingRect: .zero) }
 }
@@ -291,6 +392,19 @@ private extension Validator.Result {
 
 private extension TrackerResult {
     static var mock: Self { [.mock: 1] }
+}
+
+private final class TrackerMock: TrackerProtocol {
+    let onSeenResultsCall: LockIsolated<(@Sendable () -> Void)?> = .init(nil)
+    var seenResults: TrackerResult {
+        onSeenResultsCall.value?()
+        return .mock
+    }
+
+    let onTrackCall: LockIsolated<(@Sendable (ParserResult) -> Void)?> = .init(nil)
+    func track(result: ParserResult) {
+        onTrackCall.value?(result)
+    }
 }
 
 private extension Data {
