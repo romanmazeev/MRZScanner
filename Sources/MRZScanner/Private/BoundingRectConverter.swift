@@ -8,31 +8,31 @@
 
 import CoreImage
 import Dependencies
+import DependenciesMacros
 
+@DependencyClient
 struct BoundingRectConverter: Sendable {
-    let convert: @Sendable (_ results: [TextRecognizer.Result], _ validLines: [Validator.Result]) -> ScannedBoundingRects
+    var convert: @Sendable (_ results: [TextRecognizer.Result], _ validLines: [Validator.Result]) -> ScannedBoundingRects = { _, _ in .init(valid: [], invalid: []) }
 }
 
 extension BoundingRectConverter: DependencyKey {
     static var liveValue: Self {
-        .init(
-            convert: { results, validLines in
-                let allBoundingRects = results.map(\.boundingRect)
-                let validRectIndexes = Set(validLines.map(\.index))
-
-                var validScannedBoundingRects: [CGRect] = []
-                var invalidScannedBoundingRects: [CGRect] = []
-                allBoundingRects.enumerated().forEach {
-                    if validRectIndexes.contains($0.offset) {
-                        validScannedBoundingRects.append($0.element)
-                    } else {
-                        invalidScannedBoundingRects.append($0.element)
-                    }
+        .init { results, validLines in
+            let allBoundingRects = results.map(\.boundingRect)
+            let validRectIndexes = Set(validLines.map(\.index))
+            
+            var validScannedBoundingRects: [CGRect] = []
+            var invalidScannedBoundingRects: [CGRect] = []
+            allBoundingRects.enumerated().forEach {
+                if validRectIndexes.contains($0.offset) {
+                    validScannedBoundingRects.append($0.element)
+                } else {
+                    invalidScannedBoundingRects.append($0.element)
                 }
-
-                return .init(valid: validScannedBoundingRects, invalid: invalidScannedBoundingRects)
             }
-        )
+            
+            return .init(valid: validScannedBoundingRects, invalid: invalidScannedBoundingRects)
+        }
     }
 }
 
@@ -45,10 +45,6 @@ extension DependencyValues {
 
 #if DEBUG
 extension BoundingRectConverter: TestDependencyKey {
-    static var testValue: Self {
-        Self(
-            convert: unimplemented("BoundingRectConverter.convert")
-        )
-    }
+    static let testValue = Self()
 }
 #endif

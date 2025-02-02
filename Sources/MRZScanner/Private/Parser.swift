@@ -6,19 +6,21 @@
 //
 
 import Dependencies
+import DependenciesMacros
 import MRZParser
 
+public typealias ParserResult = MRZResult
+
+@DependencyClient
 struct Parser: Sendable {
-    let parse: @Sendable (_ mrzLines: [String]) -> ParserResult?
+    var parse: @Sendable (_ mrzLines: [String]) -> ParserResult?
 }
 
 extension Parser: DependencyKey {
     static var liveValue: Self {
-        .init(
-            parse: { mrzLines in
-                MRZParser(isOCRCorrectionEnabled: true).parse(mrzLines: mrzLines)
-            }
-        )
+        .init { mrzLines in
+            MRZParser(isOCRCorrectionEnabled: true).parse(mrzLines: mrzLines)
+        }
     }
 }
 
@@ -31,10 +33,6 @@ extension DependencyValues {
 
 #if DEBUG
 extension Parser: TestDependencyKey {
-    static var testValue: Self {
-        Self(
-            parse: unimplemented("Parser.parse")
-        )
-    }
+    static let testValue = Self()
 }
 #endif

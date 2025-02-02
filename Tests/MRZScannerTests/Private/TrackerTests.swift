@@ -9,17 +9,26 @@
 import XCTest
 
 final class TrackerTests: XCTestCase {
-    func testExisting() {
-        let result = Tracker.liveValue.updateResults([.mock: 1], .mock)
+    func testTrackAndCurrentResults() throws {
+        let tracker = Tracker.liveValue
 
-        XCTAssertEqual(try XCTUnwrap(result.first?.key), .mock)
-        XCTAssertEqual(try XCTUnwrap(result.first?.value), 2)
-    }
+        let firstResults = tracker.currentResults()
+        XCTAssertTrue(firstResults.isEmpty)
 
-    func testNew() {
-        let result = Tracker.liveValue.updateResults([:], .mock)
+        tracker.track(result: .mock)
+        let secondResults = tracker.currentResults()
+        let secondResult = try XCTUnwrap(secondResults.first)
+        XCTAssertEqual(secondResult.key, .mock)
+        XCTAssertEqual(secondResult.value, 1)
 
-        XCTAssertEqual(try XCTUnwrap(result.first?.key), .mock)
-        XCTAssertEqual(try XCTUnwrap(result.first?.value), 1)
+        tracker.track(result: .secondMock)
+        let thirdResults = tracker.currentResults()
+        XCTAssertEqual(thirdResults.count, 2)
+        XCTAssertEqual(thirdResults[.secondMock], 1)
+
+        tracker.track(result: .mock)
+        let forthResults = tracker.currentResults()
+        XCTAssertEqual(forthResults.count, 2)
+        XCTAssertEqual(forthResults[.mock], 2)
     }
 }
