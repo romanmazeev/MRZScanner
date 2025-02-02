@@ -5,51 +5,58 @@
 //  Created by Roman Mazeev on 01/01/2023.
 //
 
-import AVFoundation
-import SwiftUI
+@preconcurrency import AVFoundation
+@preconcurrency import SwiftUI
 import MRZScanner
 import Vision
 
 @MainActor
 final class ViewModel: ObservableObject {
-
-    // MARK: Camera
     private let camera = Camera()
     var captureSession: AVCaptureSession {
         camera.captureSession
     }
 
+    @Published var boundingRects: ScannedBoundingRects?
+    @Published var result: Result<ParserResult, Error>?
+
     func startCamera() async {
-        await camera.start()
+        do {
+            try await camera.startCamera()
+        } catch {
+            result = .failure(error)
+        }
     }
 
-    // MARK: Scanning
-    @Published var boundingRects: ScannedBoundingRects?
-    @Published var mrzResult: ParserResult?
-
     func startMRZScanning(cameraRect: CGRect, mrzRect: CGRect) async {
+        guard let imageStream = await camera.imageStream else { return }
+
         do {
-            for try await scanningResult in camera.imageStream.scanForMRZCode(
-                configuration: .init(
-                    orientation: .up,
-                    regionOfInterest: VNNormalizedRectForImageRect(
-                        correctCoordinates(to: .leftTop, rect: mrzRect),
-                        Int(cameraRect.width),
-                        Int(cameraRect.height)
-                    ),
-                    minimumTextHeight: 0.1,
-                    recognitionLevel: .fast
-                )
-            ) {
-                boundingRects = correctBoundingRects(to: .center, rects: scanningResult.boundingRects, mrzRect: mrzRect)
-                if let bestResult = scanningResult.best(repetitions: 2) {
-                    mrzResult = bestResult
-                    boundingRects = nil
-                    return
-                }
-            }
+            try await scanImageStream(imageStream, cameraRect: cameraRect, mrzRect: mrzRect)
         } catch {
-            print(error.localizedDescription)
+            result = .failure(error)
+        }
+    }
+
+    private func scanImageStream(_ imageStream: AsyncStream<CIImage>, cameraRect: CGRect, mrzRect: CGRect) async throws {
+        for try await scanningResult in imageStream.scanForMRZCode(
+            configuration: .init(
+                orientation: .up,
+                regionOfInterest: VNNormalizedRectForImageRect(
+                    correctCoordinates(to: .leftTop, rect: mrzRect),
+                    Int(cameraRect.width),
+                    Int(cameraRect.height)
+                ),
+                minimumTextHeight: 0.1,
+                recognitionLevel: .fast
+            )
+        ) {
+            boundingRects = correctBoundingRects(to: .center, rects: scanningResult.boundingRects, mrzRect: mrzRect)
+            if let bestResult = scanningResult.best(repetitions: 5) {
+                result = .success(bestResult)
+                boundingRects = nil
+                return
+            }
         }
     }
 
