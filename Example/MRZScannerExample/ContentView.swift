@@ -64,7 +64,14 @@ struct ContentView: View {
         .alert(isPresented: .init(get: { viewModel.result != nil }, set: { _ in viewModel.result = nil })) {
             Alert(
                 title: Text(createAlertTitle(result: viewModel.result!)),
-                message: Text(createAlertMessage(result: viewModel.result!))
+                message: Text(createAlertMessage(result: viewModel.result!)),
+                dismissButton: .default(Text("Restart scanning")) {
+                    Task {
+                        guard let cameraRect, let mrzRect else { return }
+
+                        await viewModel.startMRZScanning(cameraRect: cameraRect, mrzRect: mrzRect)
+                    }
+                }
             )
         }
         .task {
@@ -115,15 +122,6 @@ struct ContentView: View {
         case .failure(let error):
             return error.localizedDescription
         }
-    }
-}
-
-extension CGRect: @retroactive Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(origin.x)
-        hasher.combine(origin.y)
-        hasher.combine(size.width)
-        hasher.combine(size.height)
     }
 }
 

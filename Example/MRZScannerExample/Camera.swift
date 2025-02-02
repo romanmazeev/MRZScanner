@@ -6,15 +6,20 @@
 //
 
 @preconcurrency import AVFoundation
-import CoreImage
+@preconcurrency import CoreImage
+import ConcurrencyExtras
 
-actor Camera {
-    nonisolated let captureSession = AVCaptureSession()
+final class Camera: Sendable {
+    let captureSession = AVCaptureSession()
     private let outputSampleBufferDelegate = OutputSampleBufferDelegate()
 
-    var imageStream: AsyncStream<CIImage>? {
+    var imageStream: AsyncStream<CIImage> {
         .init { continuation in
-            outputSampleBufferDelegate.continuation = continuation
+            outputSampleBufferDelegate.continuation.withValue { $0 = continuation }
+
+            continuation.onTermination = { _ in
+                self.outputSampleBufferDelegate.continuation.withValue { $0 = nil }
+            }
         }
     }
 
@@ -68,12 +73,12 @@ actor Camera {
     }
 }
 
-final private class OutputSampleBufferDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-    var continuation: AsyncStream<CIImage>.Continuation?
+private final class OutputSampleBufferDelegate: NSObject, Sendable, AVCaptureVideoDataOutputSampleBufferDelegate {
+    let continuation: LockIsolated<AsyncStream<CIImage>.Continuation?> = .init(nil)
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = sampleBuffer.imageBuffer else { return }
 
-        continuation?.yield(CIImage(cvPixelBuffer: pixelBuffer))
+        continuation.value?.yield(CIImage(cvPixelBuffer: pixelBuffer))
     }
 }

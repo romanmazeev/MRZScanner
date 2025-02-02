@@ -5,8 +5,8 @@
 //  Created by Roman Mazeev on 01/01/2023.
 //
 
-@preconcurrency import AVFoundation
-@preconcurrency import SwiftUI
+import AVFoundation
+import CoreImage
 import MRZScanner
 import Vision
 
@@ -29,10 +29,8 @@ final class ViewModel: ObservableObject {
     }
 
     func startMRZScanning(cameraRect: CGRect, mrzRect: CGRect) async {
-        guard let imageStream = await camera.imageStream else { return }
-
         do {
-            try await scanImageStream(imageStream, cameraRect: cameraRect, mrzRect: mrzRect)
+            try await scanImageStream(camera.imageStream, cameraRect: cameraRect, mrzRect: mrzRect)
         } catch {
             result = .failure(error)
         }
