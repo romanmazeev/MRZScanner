@@ -14,7 +14,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/romanmazeev/MRZParser.git", branch: "master"),
-        .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay.git", .upToNextMajor(from: "1.0.2")),
         .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.1.2")
     ],
     targets: [
@@ -22,10 +21,6 @@ let package = Package(
             name: "MRZScanner",
             dependencies: [
                 "MRZParser",
-                .product(
-                    name: "XCTestDynamicOverlay",
-                    package: "xctest-dynamic-overlay"
-                ),
                 .product(
                     name: "Dependencies",
                     package: "swift-dependencies"
