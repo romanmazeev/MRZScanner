@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version:6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -13,9 +13,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/romanmazeev/MRZParser.git", from: "1.2.0"),
-        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.3.1"),
-        .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.0")
+        .package(url: "https://github.com/romanmazeev/MRZParser.git", from: "1.2.1"),
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.7.0"),
+        .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.3")
     ],
     targets: [
         .target(

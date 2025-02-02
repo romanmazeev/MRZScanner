@@ -43,7 +43,7 @@ final class TextRecognizerTests: XCTestCase {
     }
 }
 
-extension TextRecognizer.Result: @retroactive Equatable {
+extension TextRecognizer.Result: Equatable {
     public static func == (lhs: TextRecognizer.Result, rhs: TextRecognizer.Result) -> Bool {
         lhs.results == rhs.results &&
         lhs.boundingRect == rhs.boundingRect

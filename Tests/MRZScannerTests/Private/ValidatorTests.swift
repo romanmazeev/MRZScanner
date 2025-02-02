@@ -76,7 +76,7 @@ final class ValidatorTests: XCTestCase {
     }
 }
 
-extension Validator.Result: @retroactive Equatable {
+extension Validator.Result: Equatable {
     public static func == (lhs: Validator.Result, rhs: Validator.Result) -> Bool {
         lhs.result == rhs.result && lhs.index == rhs.index
     }

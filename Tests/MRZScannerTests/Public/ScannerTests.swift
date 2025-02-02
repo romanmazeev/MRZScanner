@@ -48,7 +48,7 @@ final class MRZScannerTests: XCTestCase {
             XCTAssertEqual(currentResult.boundingRects, .mock)
         }
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             events.value,
             [
                 .recognize(.mock(), 1348268),
@@ -88,7 +88,7 @@ final class MRZScannerTests: XCTestCase {
             }
         }
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             events.value,
             [
                 .recognize(.mock(), 1348268),
@@ -116,7 +116,7 @@ final class MRZScannerTests: XCTestCase {
             }
         }
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             events.value,
             [
                 .recognize(.mock(), 1348268)
@@ -172,7 +172,7 @@ final class MRZScannerTests: XCTestCase {
             }
         }
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             events.value,
             [
                 .recognize(.mock(), 1348268),
@@ -229,7 +229,7 @@ final class MRZScannerTests: XCTestCase {
             }
         }
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             events.value,
             [
                 .recognize(.mock(), 1348268),
@@ -272,7 +272,7 @@ final class MRZScannerTests: XCTestCase {
             }
         }
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             events.value,
             [
                 .recognize(.mock(), 1348268)
@@ -343,7 +343,7 @@ private extension CIImage {
     }
 }
 
-extension ScanningConfiguration: @retroactive Equatable {
+extension ScanningConfiguration: Equatable {
     public static func == (lhs: ScanningConfiguration, rhs: ScanningConfiguration) -> Bool {
         lhs.orientation == rhs.orientation &&
         lhs.regionOfInterest == rhs.regionOfInterest &&

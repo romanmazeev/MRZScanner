@@ -50,7 +50,7 @@ final class BoundingRectConverterTests: XCTestCase {
     }
 }
 
-extension ScannedBoundingRects: @retroactive Equatable {
+extension ScannedBoundingRects: Equatable {
     public static func == (lhs: ScannedBoundingRects, rhs: ScannedBoundingRects) -> Bool {
         lhs.valid == rhs.valid &&
         lhs.invalid == rhs.invalid

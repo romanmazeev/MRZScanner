@@ -20,7 +20,7 @@ final class ScanningResultTests: XCTestCase {
             boundingRects: .mock
         )
 
-        XCTAssertNoDifference(
+        expectNoDifference(
             result.best(repetitions: 9),
             .secondMock
         )
