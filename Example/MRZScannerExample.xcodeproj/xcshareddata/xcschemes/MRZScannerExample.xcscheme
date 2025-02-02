@@ -14,24 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "MRZScanner"
-               BuildableName = "MRZScanner"
-               BlueprintName = "MRZScanner"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "MRZScannerTests"
-               BuildableName = "MRZScannerTests"
-               BlueprintName = "MRZScannerTests"
-               ReferencedContainer = "container:">
+               BlueprintIdentifier = "0E472C71295D23770033AA9E"
+               BuildableName = "MRZScannerExample.app"
+               BlueprintName = "MRZScannerExample"
+               ReferencedContainer = "container:MRZScannerExample.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -40,19 +26,8 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      codeCoverageEnabled = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "MRZScannerTests"
-               BuildableName = "MRZScannerTests"
-               BlueprintName = "MRZScannerTests"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -65,6 +40,16 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "0E472C71295D23770033AA9E"
+            BuildableName = "MRZScannerExample.app"
+            BlueprintName = "MRZScannerExample"
+            ReferencedContainer = "container:MRZScannerExample.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -72,15 +57,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "MRZScanner"
-            BuildableName = "MRZScanner"
-            BlueprintName = "MRZScanner"
-            ReferencedContainer = "container:">
+            BlueprintIdentifier = "0E472C71295D23770033AA9E"
+            BuildableName = "MRZScannerExample.app"
+            BlueprintName = "MRZScannerExample"
+            ReferencedContainer = "container:MRZScannerExample.xcodeproj">
          </BuildableReference>
-      </MacroExpansion>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
