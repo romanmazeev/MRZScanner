@@ -14,7 +14,7 @@ Library for scanning documents via [MRZ](https://en.wikipedia.org/wiki/Machine-r
 ### Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/romanmazeev/MRZScanner.git", .upToNextMajor(from: "1.1.0"))
+    .package(url: "https://github.com/romanmazeev/MRZScanner.git", .upToNextMajor(from: "1.1.3"))
 ]
 ```
 *The library has an SPM [dependency](https://github.com/romanmazeev/MRZParser) for MRZ code parsing.*
@@ -41,7 +41,7 @@ let scanningResult = try await image.scanForMRZCode(configuration: configuration
 ```
 
 ## Example
-![gif](https://github.com/romanmazeev/MRZScanner/blob/master/Docs/MRZScannerExample.gif)
+![gif](./Docs/MRZScannerExample.gif)
 
 The example project is located inside the [`Example` folder](https://github.com/romanmazeev/MRZScanner/tree/master/Example). 
 *To run it, you need a device with the [minimum required OS version](https://github.com/romanmazeev/MRZScanner#requirements).*
