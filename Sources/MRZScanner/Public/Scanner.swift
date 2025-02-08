@@ -9,7 +9,7 @@ import CoreImage
 import Dependencies
 import Vision
 
-/// Configuration for scanning
+/// Configuration for scanning.
 public struct ScanningConfiguration: Sendable {
     let orientation: CGImagePropertyOrientation
     let regionOfInterest: CGRect
@@ -24,7 +24,7 @@ public struct ScanningConfiguration: Sendable {
     }
 }
 
-// MARK: Image stream scanning
+// MARK: - Image stream scanning
 
 public extension AsyncStream<CIImage> {
     func scanForMRZCode(configuration: ScanningConfiguration) -> AsyncThrowingStream<ScanningResult<TrackerResult>, Error> {
@@ -52,7 +52,7 @@ public extension AsyncStream<CIImage> {
     }
 }
 
-// MARK: Single image scanning
+// MARK: - Single image scanning
 
 public extension CIImage {
     func scanForMRZCode(configuration: ScanningConfiguration) async throws -> ScanningResult<ParserResult>? {

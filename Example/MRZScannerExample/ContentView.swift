@@ -17,16 +17,12 @@ struct ContentView: View {
     }()
 
     @StateObject private var viewModel = ViewModel()
-    @State private var cameraRect: CGRect?
     @State private var mrzRect: CGRect?
 
     var body: some View {
         GeometryReader { proxy in
             Group {
-                if let cameraRect {
-                    CameraView(captureSession: viewModel.captureSession)
-                        .frame(width: cameraRect.width, height: cameraRect.height)
-                }
+                CameraView(captureSession: viewModel.captureSession)
 
                 ZStack {
                     Color.black.opacity(0.5)
@@ -34,12 +30,11 @@ struct ContentView: View {
                     if let mrzRect {
                         Rectangle()
                             .blendMode(.destinationOut)
-                            .frame(width: mrzRect.size.width, height: mrzRect.size.height)
-                            .position(mrzRect.origin)
+                            .frame(width: mrzRect.width, height: mrzRect.height)
+                            .position(x: mrzRect.origin.x + mrzRect.width / 2,
+                                      y: mrzRect.origin.y + mrzRect.height / 2)
                             .task {
-                                guard let cameraRect else { return }
-
-                                await viewModel.startMRZScanning(cameraRect: cameraRect, mrzRect: mrzRect)
+                                await viewModel.startMRZScanning(mrzRect: mrzRect)
                             }
                     }
                 }
@@ -56,9 +51,19 @@ struct ContentView: View {
                 }
             }
             .onAppear {
-                cameraRect = proxy.frame(in: .global)
-                mrzRect = .init(origin: .init(x: proxy.size.width / 2, y: proxy.size.height / 2),
-                                size: .init(width: proxy.size.width - 40, height: proxy.size.width / 5))
+                let cameraRect = proxy.frame(in: .global)
+
+                let mrzRectWidth = cameraRect.width - 40
+                let mrzRectHeight: CGFloat = 65
+                let mrzRect = CGRect(
+                    x: (cameraRect.width - mrzRectWidth) / 2, // Center horizontally
+                    y: (cameraRect.height - mrzRectHeight) / 2, // Center vertically
+                    width: mrzRectWidth,
+                    height: mrzRectHeight
+                )
+                self.mrzRect = mrzRect
+
+                viewModel.setContentRects(cameraRect: cameraRect, mrzRect: mrzRect)
             }
         }
         .alert(isPresented: .init(get: { viewModel.result != nil }, set: { _ in viewModel.result = nil })) {
@@ -67,9 +72,9 @@ struct ContentView: View {
                 message: Text(createAlertMessage(result: viewModel.result!)),
                 dismissButton: .default(Text("Restart scanning")) {
                     Task {
-                        guard let cameraRect, let mrzRect else { return }
+                        guard let mrzRect else { return }
 
-                        await viewModel.startMRZScanning(cameraRect: cameraRect, mrzRect: mrzRect)
+                        await viewModel.startMRZScanning(mrzRect: mrzRect)
                     }
                 }
             )
@@ -85,7 +90,8 @@ struct ContentView: View {
         Rectangle()
             .stroke(color)
             .frame(width: rect.width, height: rect.height)
-            .position(rect.origin)
+            .position(x: rect.origin.x + rect.width / 2,
+                      y: rect.origin.y + rect.height / 2)
     }
 
     private func createAlertTitle(result: Result<ParserResult, Error>) -> String {

@@ -465,3 +465,10 @@ extension ScanningConfiguration: Equatable {
         lhs.recognitionLevel == rhs.recognitionLevel
     }
 }
+
+extension ScannedBoundingRects: Equatable {
+    public static func == (lhs: ScannedBoundingRects, rhs: ScannedBoundingRects) -> Bool {
+        lhs.valid == rhs.valid &&
+        lhs.invalid == rhs.invalid
+    }
+}

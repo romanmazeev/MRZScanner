@@ -20,6 +20,8 @@ final class ViewModel: ObservableObject {
     @Published var boundingRects: ScannedBoundingRects?
     @Published var result: Result<ParserResult, Error>?
 
+    private var cameraRect: CGRect?
+
     func startCamera() async {
         do {
             try await camera.startCamera()
@@ -28,28 +30,44 @@ final class ViewModel: ObservableObject {
         }
     }
 
-    func startMRZScanning(cameraRect: CGRect, mrzRect: CGRect) async {
+    func setContentRects(cameraRect: CGRect, mrzRect: CGRect) {
+        self.cameraRect = cameraRect
+    }
+
+    func startMRZScanning(mrzRect: CGRect) async {
         do {
-            try await scanImageStream(camera.imageStream, cameraRect: cameraRect, mrzRect: mrzRect)
+            try await scanImageStream(camera.imageStream, mrzRect: mrzRect)
         } catch {
             result = .failure(error)
         }
     }
 
-    private func scanImageStream(_ imageStream: AsyncStream<CIImage>, cameraRect: CGRect, mrzRect: CGRect) async throws {
+    private func scanImageStream(_ imageStream: AsyncStream<CIImage>, mrzRect: CGRect) async throws {
+        guard let cameraRect else {
+            throw ScanningError.cameraRectNotSet
+        }
+
+        // Convert from view coordinates to normalized coordinates.
+        let normalisedMRZRect = VNNormalizedRectForImageRect(
+            convertRect(mrzRect, to: .bottom, containerHeight: cameraRect.height),
+            Int(cameraRect.width),
+            Int(cameraRect.height)
+        )
+
         for try await scanningResult in imageStream.scanForMRZCode(
             configuration: .init(
                 orientation: .up,
-                regionOfInterest: VNNormalizedRectForImageRect(
-                    correctCoordinates(to: .leftTop, rect: mrzRect),
-                    Int(cameraRect.width),
-                    Int(cameraRect.height)
-                ),
+                regionOfInterest: normalisedMRZRect,
                 minimumTextHeight: 0.1,
                 recognitionLevel: .fast
             )
         ) {
-            boundingRects = correctBoundingRects(to: .center, rects: scanningResult.boundingRects, mrzRect: mrzRect)
+            boundingRects = correctBoundingRects(
+                rects: scanningResult.boundingRects,
+                normalisedMRZRect: normalisedMRZRect,
+                cameraRect: cameraRect
+            )
+
             if let bestResult = scanningResult.best(repetitions: 5) {
                 result = .success(bestResult)
                 boundingRects = nil
@@ -58,29 +76,45 @@ final class ViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Correct CGRect origin from top left to center
-
-    enum CorrectionType {
-        case center
-        case leftTop
+    enum CoordinateSystem {
+        case bottom
+        case top
     }
 
-    private func correctBoundingRects(to type: CorrectionType, rects: ScannedBoundingRects, mrzRect: CGRect) -> ScannedBoundingRects {
-        let convertedCoordinates = rects.convertedToImageRects(imageWidth: Int(mrzRect.width), imageHeight: Int(mrzRect.height))
-        let correctedMRZRect = correctCoordinates(to: .leftTop, rect: mrzRect)
+    private func correctBoundingRects(
+        rects: ScannedBoundingRects,
+        normalisedMRZRect: CGRect,
+        cameraRect: CGRect
+    ) -> ScannedBoundingRects {
+        func translateToRootView(normalizedRect: CGRect) -> CGRect {
+            // Convert from normalized coordinates inside the MRZ to view coordinates inside the cameraRect.
+            let imageRect = VNImageRectForNormalizedRectUsingRegionOfInterest(
+                normalizedRect,
+                Int(cameraRect.width),
+                Int(cameraRect.height),
+                normalisedMRZRect
+            )
 
-        func correctRects(_ rects: [CGRect]) -> [CGRect] {
-            rects
-                .map { correctCoordinates(to: type, rect: $0) }
-                .map { .init(origin: .init(x: $0.origin.x + correctedMRZRect.minX, y: $0.origin.y + correctedMRZRect.minY), size: $0.size) }
+            return convertRect(imageRect, to: .top, containerHeight: cameraRect.height)
         }
 
-        return .init(valid: correctRects(convertedCoordinates.valid),  invalid: correctRects(convertedCoordinates.invalid))
+        return ScannedBoundingRects(
+            valid: rects.valid.map { translateToRootView(normalizedRect: $0) },
+            invalid: rects.invalid.map { translateToRootView(normalizedRect: $0) }
+        )
     }
 
-    private func correctCoordinates(to type: CorrectionType, rect: CGRect) -> CGRect {
-        let x = type == .center ? rect.minX + rect.width / 2 : rect.minX - rect.width / 2
-        let y = type == .center ? rect.minY + rect.height / 2 : rect.minY - rect.height / 2
-        return CGRect(origin: .init(x: x, y: y), size: rect.size)
+    /// Converts a rectangle's Y-coordinate between top-based and bottom-based coordinate systems.
+    private func convertRect(_ rect: CGRect, to coordinateSystem: CoordinateSystem, containerHeight: CGFloat) -> CGRect {
+        .init(
+            x: rect.origin.x,
+            y: coordinateSystem == .top ? containerHeight - rect.origin.y - rect.height : containerHeight - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
     }
+}
+
+enum ScanningError: Error {
+    case cameraRectNotSet
 }
