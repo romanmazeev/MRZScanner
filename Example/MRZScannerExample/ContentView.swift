@@ -115,8 +115,8 @@ struct ContentView: View {
             return """
                    Document type: \(mrzResult.documentType)
                    Country code: \(mrzResult.countryCode)
-                   Surnames: \(mrzResult.surnames)
-                   Given names: \(mrzResult.givenNames)
+                   Surnames: \(mrzResult.names.surnames)
+                   Given names: \(mrzResult.names.givenNames ?? "-")
                    Document number: \(mrzResult.documentNumber)
                    nationalityCountryCode: \(mrzResult.nationalityCountryCode)
                    birthdate: \(birthdateString ?? "-")

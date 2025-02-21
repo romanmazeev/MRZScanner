@@ -5,8 +5,8 @@
 //  Created by Roman Mazeev on 02/12/2023.
 //
 
-@testable import MRZScanner
 import CoreImage
+@testable import MRZScanner
 import XCTest
 
 final class TextRecognizerTests: XCTestCase {

@@ -51,12 +51,11 @@ private extension ParserResult {
     static var thirdMock: Self {
         .init(
             mrzKey: "",
-            format: .td2,
+            format: .td2(isVisaDocument: false),
             documentType: .id,
             documentTypeAdditional: "r",
             countryCode: "thirdTest",
-            surnames: "thirdTest",
-            givenNames: "thirdTest",
+            names: .init(surnames: "thirdTest", givenNames: "thirdTest"),
             documentNumber: "thirdTest",
             nationalityCountryCode: "thirdTest",
             birthdate: .mock,

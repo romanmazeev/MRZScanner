@@ -9,7 +9,7 @@ import Dependencies
 import DependenciesMacros
 import MRZParser
 
-public typealias ParserResult = MRZResult
+public typealias ParserResult = MRZCode
 
 @DependencyClient
 struct Parser: Sendable {
@@ -19,7 +19,7 @@ struct Parser: Sendable {
 extension Parser: DependencyKey {
     static var liveValue: Self {
         .init { mrzLines in
-            MRZParser.parse(mrzLines: mrzLines, isOCRCorrectionEnabled: true)
+            ParserResult(mrzLines: mrzLines, isOCRCorrectionEnabled: true)
         }
     }
 }

@@ -6,7 +6,6 @@
 //
 
 import CoreImage
-import MRZParser
 
 /// Bounding rectangles of the scanned text.
 /// - Note: Rects are normalized and use a bottom-right coordinate system.

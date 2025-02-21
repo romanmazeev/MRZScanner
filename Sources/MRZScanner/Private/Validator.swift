@@ -7,7 +7,6 @@
 
 import Dependencies
 import DependenciesMacros
-import MRZParser
 
 @DependencyClient
 struct Validator: Sendable {
@@ -26,7 +25,7 @@ extension Validator: DependencyKey {
         .init { possibleLines in
             var validLines: [Result] = []
 
-            for validMRZCode in MRZFormat.allCases {
+            for validMRZCode in [ParserResult.Format.td1, .td2(isVisaDocument: false), .td3(isVisaDocument: false)] {
                 guard validLines.count < validMRZCode.linesCount else { break }
                 for (index, lines) in possibleLines.enumerated() {
                     guard validLines.count < validMRZCode.linesCount else { break }
