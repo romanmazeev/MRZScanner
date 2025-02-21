@@ -14,7 +14,7 @@ Library for scanning documents via [MRZ](https://en.wikipedia.org/wiki/Machine-r
 ### Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/romanmazeev/MRZScanner.git", .upToNextMajor(from: "1.1.3"))
+    .package(url: "https://github.com/romanmazeev/MRZScanner.git", .upToNextMajor(from: "1.1.4"))
 ]
 ```
 *The library has an SPM [dependency](https://github.com/romanmazeev/MRZParser) for MRZ code parsing.*
