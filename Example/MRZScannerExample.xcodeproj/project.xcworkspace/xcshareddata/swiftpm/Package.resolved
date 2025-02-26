@@ -1,5 +1,5 @@
 {
-  "originHash" : "f1429daeefed15105d9ada5a1bf13797e9888c1e7a6ec51a743f3c0c2c757348",
+  "originHash" : "d496baa53815f398ff0f15f69a21489d438e1c26a25b08d755e812bb9de524fa",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/romanmazeev/MRZParser.git",
       "state" : {
-        "revision" : "0b66b55429d2a1501bdfa027fab7ccced103a12d",
-        "version" : "1.3.1"
+        "revision" : "a9fb511453b1675f58c0ea2ce331d6df90a3fd8c",
+        "version" : "1.3.2"
       }
     },
     {
