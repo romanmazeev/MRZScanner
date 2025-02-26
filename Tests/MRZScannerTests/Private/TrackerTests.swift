@@ -8,7 +8,7 @@
 @testable import MRZScanner
 import XCTest
 
-final class TrackerCreatorTests: XCTestCase {
+final class TrackerTests: XCTestCase {
     func testTrackAndCurrentResults() throws {
         let tracker = Tracker.liveValue.create()
 
