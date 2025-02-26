@@ -53,7 +53,7 @@ private extension ParserResult {
             mrzKey: "",
             format: .td2(isVisaDocument: false),
             documentType: .id,
-            documentTypeAdditional: "r",
+            documentTypeAdditional: .national,
             countryCode: "thirdTest",
             names: .init(surnames: "thirdTest", givenNames: "thirdTest"),
             documentNumber: "thirdTest",

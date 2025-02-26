@@ -106,11 +106,8 @@ struct ContentView: View {
     private func createAlertMessage(result: Result<ParserResult, Error>) -> String {
         switch result {
         case .success(let mrzResult):
-            var birthdateString: String?
-            var expiryDateString: String?
-
-            birthdateString = dateFormatter.string(from: mrzResult.birthdate)
-            expiryDateString = dateFormatter.string(from: mrzResult.expiryDate)
+            let birthdateString = dateFormatter.string(from: mrzResult.birthdate)
+            let expiryDateString = mrzResult.expiryDate.map { dateFormatter.string(from: $0) }
 
             return """
                    Document type: \(mrzResult.documentType)
@@ -119,7 +116,7 @@ struct ContentView: View {
                    Given names: \(mrzResult.names.givenNames ?? "-")
                    Document number: \(mrzResult.documentNumber)
                    nationalityCountryCode: \(mrzResult.nationalityCountryCode)
-                   birthdate: \(birthdateString ?? "-")
+                   birthdate: \(birthdateString)
                    sex: \(mrzResult.sex)
                    expiryDate: \(expiryDateString ?? "-")
                    personalNumber: \(mrzResult.optionalData ?? "-")
