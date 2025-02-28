@@ -27,7 +27,8 @@ public struct ScanningConfiguration: Sendable {
 // MARK: - Image stream scanning
 
 public extension AsyncStream<CIImage> {
-    func scanForMRZCode(configuration: ScanningConfiguration) -> AsyncThrowingStream<ScanningResult<TrackerResult>, Error> {
+    // TODO: Replace return type with `any AsyncSequence` once macOS 15.0 & iOS 18.0 become the minimum deployment target.
+    func scanForMRZCode(configuration: ScanningConfiguration) -> AsyncThrowingMapSequence<AsyncStream<CIImage>, ScanningResult<TrackerResult>> {
         @Dependency(\.tracker.create) var createTracker
         let tracker = createTracker()
 
@@ -43,12 +44,12 @@ public extension AsyncStream<CIImage> {
 
             @Dependency(\.parser) var parser
             guard let parsedResult = parser.parse(mrzLines: validatedResults.map(\.result)) else {
-                return await .init(results: tracker.seenResults, boundingRects: boundingRects)
+                return await ScanningResult<TrackerResult>(results: tracker.seenResults, boundingRects: boundingRects)
             }
 
             tracker.track(result: parsedResult)
             return await .init(results: tracker.seenResults, boundingRects: boundingRects)
-        }.eraseToThrowingStream()
+        }
     }
 }
 
