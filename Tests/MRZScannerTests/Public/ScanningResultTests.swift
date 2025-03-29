@@ -54,7 +54,7 @@ private extension ParserResult {
             format: .td2(isVisaDocument: false),
             documentType: .id,
             documentTypeAdditional: .national,
-            countryCode: "thirdTest",
+            country: .other("thirdTest"),
             names: .init(surnames: "thirdTest", givenNames: "thirdTest"),
             documentNumber: "thirdTest",
             nationalityCountryCode: "thirdTest",
