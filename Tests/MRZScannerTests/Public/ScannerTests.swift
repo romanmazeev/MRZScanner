@@ -348,6 +348,10 @@ final class MRZScannerTests: XCTestCase {
                 events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
                 throw MockError.mock
             }
+            $0.tracker.create = {
+                events.withValue { $0.append(.createTracker) }
+                return TrackerMock()
+            }
         } operation: {
             let resultsStream = AsyncStream<CIImage> { continuation in
                 do {
@@ -372,6 +376,7 @@ final class MRZScannerTests: XCTestCase {
         expectNoDifference(
             events.value,
             [
+                .createTracker,
                 .recognize(.mock(), 1348268)
             ]
         )

@@ -1,5 +1,5 @@
 {
-  "originHash" : "d6fed62400e23d61eed017f58de8a9f2c19a92b392e14452df8bc05ee27a6c80",
+  "originHash" : "b5bea232a19fa1828496940f95df5bb0c345b8406167528df18047889ed566eb",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/romanmazeev/MRZParser.git",
       "state" : {
-        "revision" : "fbbea047333f145ba5574a5cc4ba590bb391eed1",
-        "version" : "1.4.2"
+        "revision" : "a7dd3a8c28fe4f829308ffbae5a25bac4674da82",
+        "version" : "1.4.3"
       }
     },
     {
@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-dependencies",
       "state" : {
-        "revision" : "121a428c505c01c4ce02d5ada1c8fc3da93afce9",
-        "version" : "1.8.0"
+        "revision" : "4c90d6b2b9bf0911af87b103bb40f41771891596",
+        "version" : "1.9.2"
       }
     },
     {
