@@ -54,8 +54,8 @@ final class MRZScannerTests: XCTestCase {
             [
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
-                .parse(["test"]),
                 .convert([.mock], [.mock]),
+                .parse(["test"])
             ]
         )
     }
@@ -90,8 +90,8 @@ final class MRZScannerTests: XCTestCase {
             [
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
-                .parse(["test"]),
-                .convert([.mock], [.mock])
+                .convert([.mock], [.mock]),
+                .parse(["test"])
             ]
         )
     }
@@ -179,10 +179,10 @@ final class MRZScannerTests: XCTestCase {
                 .createTracker,
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
                 .parse(["test"]),
                 .track(.mock),
-                .seenResults,
-                .convert([.mock], [.mock])
+                .seenResults
             ]
         )
     }
@@ -260,17 +260,17 @@ final class MRZScannerTests: XCTestCase {
                 .createTracker,
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
                 .parse(["test"]),
                 .track(.mock),
                 .seenResults,
-                .convert([.mock], [.mock]),
                 .createTracker,
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
                 .parse(["test"]),
                 .track(.mock),
-                .seenResults,
-                .convert([.mock], [.mock])
+                .seenResults
             ]
         )
     }
@@ -333,9 +333,9 @@ final class MRZScannerTests: XCTestCase {
                 .createTracker,
                 .recognize(.mock(), 1348268),
                 .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
                 .parse(["test"]),
-                .seenResults,
-                .convert([.mock], [.mock])
+                .seenResults
             ]
         )
     }
