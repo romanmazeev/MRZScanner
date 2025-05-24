@@ -11,6 +11,25 @@ import Vision
 
 // MARK: - Image stream scanning
 
+public final class Scanner: Sendable {
+    private let tracker: any TrackerProtocol
+
+    public init() {
+        @Dependency(\.tracker.create) var createTracker
+        self.tracker = createTracker()
+    }
+
+    public func scanFrame(image: CIImage, configuration: ScanningConfiguration) async throws -> ScanningResult<TrackerResult> {
+        let (parsedResult, boundingRects) = try await scanMRZCode(from: image, configuration: configuration)
+        guard let parsedResult else {
+            return ScanningResult<TrackerResult>(results: tracker.seenResults, boundingRects: boundingRects)
+        }
+
+        tracker.track(result: parsedResult)
+        return .init(results: tracker.seenResults, boundingRects: boundingRects)
+    }
+}
+
 @available(macOS 15.0, iOS 18.0, *)
 public extension AsyncSequence<CIImage, Never> {
     func scanForMRZCode(configuration: ScanningConfiguration) -> any AsyncSequence<ScanningResult<TrackerResult>, Error> {

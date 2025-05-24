@@ -121,6 +121,229 @@ final class MRZScannerTests: XCTestCase {
         )
     }
 
+    // MARK: - Scanner.scanFrame
+
+    func testScanFrameSuccess() async throws {
+        let events = LockIsolated([Event]())
+        let trackerMock = TrackerMock()
+        trackerMock.onSeenResultsCall.withValue {
+            $0 = {
+                events.withValue { $0.append(.seenResults) }
+            }
+        }
+        trackerMock.onTrackCall.withValue {
+            $0 = { parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        }
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return .mock
+            }
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return trackerMock
+            }
+        } operation: {
+            let scanner = Scanner()
+            let result = try await scanner.scanFrame(
+                image: try XCTUnwrap(CIImage(data: .imageMock)),
+                configuration: .mock()
+            )
+            XCTAssertEqual(result.results, .mock)
+            XCTAssertEqual(result.boundingRects, .mock)
+        }
+
+        expectNoDifference(
+            events.value,
+            [
+                .createTracker,
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
+                .parse(["test"]),
+                .track(.mock),
+                .seenResults
+            ]
+        )
+    }
+
+    func testScanFrameParsingFailure() async throws {
+        let events = LockIsolated([Event]())
+        let trackerMock = TrackerMock()
+        trackerMock.onSeenResultsCall.withValue {
+            $0 = {
+                events.withValue { $0.append(.seenResults) }
+            }
+        }
+        trackerMock.onTrackCall.withValue {
+            $0 = { parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        }
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return nil
+            }
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return trackerMock
+            }
+        } operation: {
+            let scanner = Scanner()
+            let result = try await scanner.scanFrame(
+                image: try XCTUnwrap(CIImage(data: .imageMock)),
+                configuration: .mock()
+            )
+            XCTAssertEqual(result.results, .mock)
+            XCTAssertEqual(result.boundingRects, .mock)
+        }
+
+        expectNoDifference(
+            events.value,
+            [
+                .createTracker,
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
+                .parse(["test"]),
+                .seenResults
+            ]
+        )
+    }
+
+    func testScanFrameTextRecognizerFailure() async throws {
+        let events = LockIsolated([Event]())
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                throw MockError.mock
+            }
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return TrackerMock()
+            }
+        } operation: {
+            let scanner = Scanner()
+            do {
+                _ = try await scanner.scanFrame(
+                    image: try XCTUnwrap(CIImage(data: .imageMock)),
+                    configuration: .mock()
+                )
+                XCTFail("Should fail here")
+            } catch {
+                XCTAssertEqual(try XCTUnwrap(error as? MockError), .mock)
+            }
+        }
+
+        expectNoDifference(
+            events.value,
+            [
+                .createTracker,
+                .recognize(.mock(), 1348268)
+            ]
+        )
+    }
+
+    func testScanFrameSuccessTwice() async throws {
+        let events = LockIsolated([Event]())
+        let trackerMock = TrackerMock()
+        trackerMock.onSeenResultsCall.withValue {
+            $0 = {
+                events.withValue { $0.append(.seenResults) }
+            }
+        }
+        trackerMock.onTrackCall.withValue {
+            $0 = { parserResult in
+                events.withValue { $0.append(.track(parserResult)) }
+            }
+        }
+
+        try await withDependencies {
+            $0.textRecognizer.recognize = { @Sendable configuration, scanningImage in
+                events.withValue { $0.append(.recognize(configuration, scanningImage.base64EncodedString.count)) }
+                return [.mock]
+            }
+            $0.validator.getValidatedResults = { @Sendable possibleLines in
+                events.withValue { $0.append(.getValidatedResults(possibleLines)) }
+                return [.mock]
+            }
+            $0.boundingRectConverter.convert = { @Sendable results, validLines in
+                events.withValue { $0.append(.convert(results, validLines)) }
+                return .mock
+            }
+            $0.parser.parse = { @Sendable mrzLines in
+                events.withValue { $0.append(.parse(mrzLines)) }
+                return .mock
+            }
+            $0.tracker.create = { @Sendable in
+                events.withValue { $0.append(.createTracker) }
+                return trackerMock
+            }
+        } operation: {
+            let scanner = Scanner()
+            let image = try XCTUnwrap(CIImage(data: .imageMock))
+
+            let firstResult = try await scanner.scanFrame(image: image, configuration: .mock())
+            XCTAssertEqual(firstResult.results, .mock)
+            XCTAssertEqual(firstResult.boundingRects, .mock)
+
+            let secondResult = try await scanner.scanFrame(image: image, configuration: .mock())
+            XCTAssertEqual(secondResult.results, .mock)
+            XCTAssertEqual(secondResult.boundingRects, .mock)
+        }
+
+        expectNoDifference(
+            events.value,
+            [
+                .createTracker,
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
+                .parse(["test"]),
+                .track(.mock),
+                .seenResults,
+                .recognize(.mock(), 1348268),
+                .getValidatedResults([["test"]]),
+                .convert([.mock], [.mock]),
+                .parse(["test"]),
+                .track(.mock),
+                .seenResults
+            ]
+        )
+    }
+
+    // MARK: - AsyncStream image stream
+
     func testImageStreamSuccess() async throws {
         let events = LockIsolated([Event]())
         let trackerMock = TrackerMock()
