@@ -11,17 +11,15 @@ import Vision
 
 // MARK: - Image stream scanning
 
-public final class MRZScanner {
+public final class Scanner {
     private let tracker: any TrackerProtocol
-    private let configuration: ScanningConfiguration
 
-    init(configuration: ScanningConfiguration) {
+    public init() {
         @Dependency(\.tracker.create) var createTracker
         self.tracker = createTracker()
-        self.configuration = configuration
     }
 
-    func scanFrame(image: CIImage) async throws -> ScanningResult<TrackerResult> {
+    public func scanFrame(image: CIImage, configuration: ScanningConfiguration) async throws -> ScanningResult<TrackerResult> {
         let (parsedResult, boundingRects) = try await scanMRZCode(from: image, configuration: configuration)
         guard let parsedResult else {
             return ScanningResult<TrackerResult>(results: tracker.seenResults, boundingRects: boundingRects)
