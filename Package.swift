@@ -14,8 +14,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/romanmazeev/MRZParser.git", from: "1.4.3"),
-        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.9.2"),
-        .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.3")
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.11.0"),
+        .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.5.0")
     ],
     targets: [
         .target(
