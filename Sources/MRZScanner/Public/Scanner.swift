@@ -30,7 +30,7 @@ public final class Scanner: Sendable {
     }
 }
 
-@available(macOS 15.0, iOS 18.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 18, *)
 public extension AsyncSequence<CIImage, Never> {
     func scanForMRZCode(configuration: ScanningConfiguration) -> any AsyncSequence<ScanningResult<TrackerResult>, Error> {
         @Dependency(\.tracker.create) var createTracker
