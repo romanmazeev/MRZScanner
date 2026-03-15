@@ -8,7 +8,7 @@
 import CustomDump
 import Dependencies
 @testable import MRZScanner
-@preconcurrency import CoreImage
+import CoreImage
 import XCTest
 
 final class MRZScannerTests: XCTestCase {
