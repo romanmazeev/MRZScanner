@@ -9,80 +9,61 @@ import MRZScanner
 import SwiftUI
 
 struct ContentView: View {
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter
-    }()
-
-    @StateObject private var viewModel = ViewModel()
-    @State private var mrzRect: CGRect?
+    private var viewModel = ViewModel()
+    @State private var cameraRect: CGRect?
+    @State private var orientation: InterfaceOrientation?
+    @State private var isVideoMirrored = false
 
     var body: some View {
-        GeometryReader { proxy in
-            Group {
-                CameraView(captureSession: viewModel.captureSession)
-
-                ZStack {
-                    Color.black.opacity(0.5)
-
-                    if let mrzRect {
-                        Rectangle()
-                            .blendMode(.destinationOut)
-                            .frame(width: mrzRect.width, height: mrzRect.height)
-                            .position(x: mrzRect.origin.x + mrzRect.width / 2,
-                                      y: mrzRect.origin.y + mrzRect.height / 2)
-                            .task {
-                                await viewModel.startMRZScanning(mrzRect: mrzRect)
-                            }
-                    }
-                }
-                .compositingGroup()
-
-                if let boundingRects = viewModel.boundingRects {
-                    ForEach(boundingRects.valid, id: \.self) { boundingRect in
-                        createBoundingRect(boundingRect, color: .green)
-                    }
-
-                    ForEach(boundingRects.invalid, id: \.self) { boundingRect in
-                        createBoundingRect(boundingRect, color: .red)
-                    }
+        ZStack {
+            if let captureSession = viewModel.captureSession {
+                GeometryReader { proxy in
+                    CameraView(
+                        captureSession: captureSession,
+                        onViewDidLayoutSubviews: { mirrored in
+                            let rect = proxy.frame(in: .global)
+                            cameraRect = rect
+                            isVideoMirrored = mirrored
+                            guard let orientation else { return }
+                            viewModel.startScanning(cameraRect: rect, orientation: orientation, isVideoMirrored: mirrored)
+                        },
+                        onOrientationChanged: { newOrientation, mirrored in
+                            orientation = newOrientation
+                            isVideoMirrored = mirrored
+                            guard let cameraRect else { return }
+                            viewModel.startScanning(cameraRect: cameraRect, orientation: newOrientation, isVideoMirrored: mirrored)
+                        }
+                    )
                 }
             }
-            .onAppear {
-                let cameraRect = proxy.frame(in: .global)
 
-                let mrzRectWidth = cameraRect.width - 40
-                let mrzRectHeight: CGFloat = 65
-                let mrzRect = CGRect(
-                    x: (cameraRect.width - mrzRectWidth) / 2, // Center horizontally
-                    y: (cameraRect.height - mrzRectHeight) / 2, // Center vertically
-                    width: mrzRectWidth,
-                    height: mrzRectHeight
-                )
-                self.mrzRect = mrzRect
-
-                viewModel.setContentRects(cameraRect: cameraRect, mrzRect: mrzRect)
+            if let boundingRects = viewModel.boundingRects {
+                ForEach(boundingRects.valid, id: \.self) { rect in
+                    createBoundingRect(rect, color: .green)
+                }
+                ForEach(boundingRects.invalid, id: \.self) { rect in
+                    createBoundingRect(rect, color: .red)
+                }
             }
         }
-        .alert(isPresented: .init(get: { viewModel.result != nil }, set: { _ in viewModel.result = nil })) {
+        .alert(isPresented: .init(
+            get: { viewModel.result != nil },
+            set: { _ in viewModel.result = nil }
+        )) {
             Alert(
                 title: Text(createAlertTitle(result: viewModel.result!)),
                 message: Text(createAlertMessage(result: viewModel.result!)),
                 dismissButton: .default(Text("Restart scanning")) {
-                    Task {
-                        guard let mrzRect else { return }
-
-                        await viewModel.startMRZScanning(mrzRect: mrzRect)
-                    }
+                    viewModel.restartScanning()
                 }
             )
         }
         .task {
             await viewModel.startCamera()
         }
+#if os(iOS)
         .statusBarHidden()
+#endif
         .ignoresSafeArea()
     }
 
@@ -96,31 +77,29 @@ struct ContentView: View {
 
     private func createAlertTitle(result: Result<ParserResult, Error>) -> String {
         switch result {
-        case .success:
-            return "Scanned successfully"
-        case .failure:
-            return "Error"
+        case .success: return "Scanned successfully"
+        case .failure: return "Error"
         }
     }
 
     private func createAlertMessage(result: Result<ParserResult, Error>) -> String {
         switch result {
         case .success(let mrzResult):
-            let birthdateString = dateFormatter.string(from: mrzResult.birthdate)
-            let expiryDateString = mrzResult.expiryDate.map { dateFormatter.string(from: $0) }
+            let birthdateString = mrzResult.birthdate.formatted(date: .abbreviated, time: .omitted)
+            let expiryDateString = mrzResult.expiryDate?.formatted(date: .abbreviated, time: .omitted)
 
             return """
                    Document type: \(mrzResult.documentType)
-                   Country code: \(mrzResult.countryCode)
-                   Surnames: \(mrzResult.names.surnames)
-                   Given names: \(mrzResult.names.givenNames ?? "-")
+                   Country code: \(mrzResult.issuingCountry.identifier)
+                   Surnames: \(mrzResult.name.surname)
+                   Given names: \(mrzResult.name.givenNames ?? "-")
                    Document number: \(mrzResult.documentNumber)
-                   nationalityCountryCode: \(mrzResult.nationalityCountryCode)
-                   birthdate: \(birthdateString)
-                   sex: \(mrzResult.sex)
-                   expiryDate: \(expiryDateString ?? "-")
-                   personalNumber: \(mrzResult.optionalData ?? "-")
-                   personalNumber2: \(mrzResult.optionalData2 ?? "-")
+                   Nationality: \(mrzResult.nationalityCountryCode)
+                   Birthdate: \(birthdateString)
+                   Sex: \(mrzResult.sex)
+                   Expiry date: \(expiryDateString ?? "-")
+                   Optional data: \(mrzResult.optionalData ?? "-")
+                   Optional data 2: \(mrzResult.optionalData2 ?? "-")
                    """
         case .failure(let error):
             return error.localizedDescription
@@ -128,8 +107,6 @@ struct ContentView: View {
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview {
+    ContentView()
 }

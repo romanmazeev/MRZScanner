@@ -50,6 +50,14 @@ public extension AsyncSequence<CIImage, Never> {
 
 // TODO: Remove once macOS 15.0 & iOS 18.0 become the minimum deployment target.
 public extension AsyncStream<CIImage> {
+    /// Scans each frame in the stream for an MRZ code, accumulating results across frames using an internal tracker.
+    ///
+    /// A fresh tracker is created on each call to this method, so calling `scanForMRZCode` again
+    /// produces a sequence with clean state — suitable for restarting a scan session.
+    ///
+    /// - Important: Do not reuse the returned sequence across scan sessions. Iterating the same sequence
+    ///   a second time will retain the tracker state from the previous iteration.
+    ///   To start a fresh session, call `scanForMRZCode` again.
     func scanForMRZCode(configuration: ScanningConfiguration) -> AsyncThrowingMapSequence<AsyncStream<CIImage>, ScanningResult<TrackerResult>> {
         @Dependency(\.tracker.create) var createTracker
         let tracker = createTracker()
